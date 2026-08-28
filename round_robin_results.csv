@@ -1,0 +1,5 @@
+job_id,region,arrival_time,start_time,finish_time,runtime,deadline,latency,sla_violated,energy_consumed,carbon_emitted,cost
+J001,Norway,0,0,2,2,6,2,False,8,800,1.12
+J002,Norway,1,1,4,3,8,3,False,6,720,0.8400000000000001
+J003,Norway,2,2,4,2,10,2,False,8,720,1.12
+J004,Norway,3,3,4,1,8,1,False,2,160,0.28

@@ -1,0 +1,11 @@
+﻿greenops_env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.vscode/
+.idea/
+.env
+*.log
+.DS_Store
+Thumbs.db
