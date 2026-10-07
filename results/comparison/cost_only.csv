@@ -1,6 +1,6 @@
-job_id,region,arrival_time,start_time,finish_time,runtime,deadline,latency,sla_violated,energy_consumed,carbon_emitted,cost
-J001,India,0,0,2,2,6,2,False,0.4,260.0,0.64
-J002,India,1,1,4,3,8,3,False,0.45000000000000007,279.00000000000006,0.48
-J003,India,2,2,4,2,10,2,False,0.4,240.0,0.64
-J004,India,3,3,4,1,8,1,False,0.15000000000000002,87.00000000000001,0.16
-J005,India,10,10,12,2,18,2,False,0.4,280.0,0.64
+job_id,flexibility,status,region,arrival_time,start_time,finish_time,runtime,deadline,cpu_required,waiting_time,latency,sla_violated,tardiness,energy_consumed,carbon_intensity,carbon_emitted,cost,decisions
+J001,strict,completed,India,0,0,2,2,6,4,0,2,False,0.0,0.44000000000000006,635.0,279.40000000000003,0.64,1
+J002,batch,completed,India,1,1,4,3,8,2,0,3,False,0.0,0.33000000000000007,600.0,198.00000000000006,0.48,1
+J003,flexible,completed,India,2,2,4,2,10,4,0,2,False,0.0,0.44000000000000006,590.0,259.6,0.64,1
+J004,strict,completed,India,3,3,4,1,8,2,0,1,False,0.0,0.11000000000000001,580.0,63.80000000000001,0.16,1
+J005,flexible,completed,India,10,10,12,2,18,4,0,2,False,0.0,0.44000000000000006,710.0,312.40000000000003,0.64,1

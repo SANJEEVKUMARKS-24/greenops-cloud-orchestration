@@ -1,6 +1,6 @@
-job_id,region,arrival_time,start_time,finish_time,runtime,deadline,latency,sla_violated,energy_consumed,carbon_emitted,cost
-J001,Norway,0,0,2,2,6,2,False,0.4,40.0,1.12
-J002,Norway,1,1,4,3,8,3,False,0.45000000000000007,54.00000000000001,0.8400000000000001
-J003,Norway,2,2,4,2,10,2,False,0.4,36.0,1.12
-J004,Norway,3,3,4,1,8,1,False,0.15000000000000002,12.000000000000002,0.28
-J005,Norway,10,10,12,2,18,2,False,0.4,40.0,1.12
+job_id,flexibility,status,region,arrival_time,start_time,finish_time,runtime,deadline,cpu_required,waiting_time,latency,sla_violated,tardiness,energy_consumed,carbon_intensity,carbon_emitted,cost,decisions
+J001,strict,completed,Norway,0,0,2,2,6,4,0,2,False,0.0,0.24149999999999996,110.0,26.564999999999998,1.12,1
+J002,batch,completed,Norway,1,1,4,3,8,2,0,3,False,0.0,0.18112499999999998,96.66666666666667,17.50875,0.8400000000000001,1
+J003,flexible,completed,Norway,2,2,4,2,10,4,0,2,False,0.0,0.24149999999999996,85.0,20.527499999999996,1.12,1
+J004,strict,completed,Norway,3,3,4,1,8,2,0,1,False,0.0,0.06037499999999999,80.0,4.829999999999999,0.28,1
+J005,flexible,completed,Norway,10,10,12,2,18,4,0,2,False,0.0,0.24149999999999996,95.0,22.942499999999995,1.12,1

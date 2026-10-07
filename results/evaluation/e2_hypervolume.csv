@@ -1,0 +1,8 @@
+scheduler,label,configurations,hypervolume
+greenops_pareto,GreenOps Pareto,66,0.7540824221235862
+greenops_moo,GreenOps MOO,66,0.7374143522990563
+all_baselines,All four baselines together,4,0.524446906945744
+round_robin,Round Robin,1,0.3578977562491549
+cost_only,Cost Only,1,0.2563158488796154
+greenest_region,Greenest Region,1,0.1501068571166195
+temporal_green,Temporal Green,1,0.13752108753808712

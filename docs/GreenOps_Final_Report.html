@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GreenOps Final Report</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+  :root { --ink:#111; --ink2:#444; --rule:#cfcfcf; --accent:#1c5cab; --tint:#f3f6fa; }
+  html { background:#fff; }
+  body { font-family: Georgia, "Times New Roman", serif; color:var(--ink); font-size:10.6pt; line-height:1.48; margin:0; background:#fff; }
+  h1,h2,h3,h4 { font-family: "Segoe UI", Arial, sans-serif; color:var(--ink); line-height:1.25; }
+  h2 { font-size:15pt; margin:26px 0 8px; border-bottom:1.5px solid var(--ink); padding-bottom:4px; page-break-after:avoid; }
+  h3 { font-size:11.8pt; margin:18px 0 6px; page-break-after:avoid; }
+  h4 { font-size:10.6pt; margin:12px 0 4px; page-break-after:avoid; }
+  p { margin:6px 0 8px; text-align:justify; }
+  .title { text-align:center; padding:40px 0 18px; }
+  .title .kicker { font-family:"Segoe UI",Arial,sans-serif; letter-spacing:.25em; font-size:9.5pt; color:var(--ink2); }
+  .title h1 { font-size:26pt; margin:14px 0 6px; }
+  .title .sub { font-size:13pt; font-style:italic; margin-bottom:18px; }
+  .title .authors { font-family:"Segoe UI",Arial,sans-serif; font-size:10.5pt; }
+  .title .inst { font-size:10pt; color:var(--ink2); }
+  table { border-collapse:collapse; width:100%; margin:8px 0 4px; font-family:"Segoe UI",Arial,sans-serif; font-size:8.8pt; page-break-inside:avoid; }
+  th, td { border-bottom:1px solid var(--rule); padding:4px 6px; text-align:left; vertical-align:top; }
+  th { border-bottom:1.5px solid var(--ink); font-weight:600; }
+  td.n, th.n { text-align:right; font-variant-numeric: tabular-nums; }
+  tr.hl td { background:var(--tint); font-weight:600; }
+  .cap { font-family:"Segoe UI",Arial,sans-serif; font-size:8.6pt; color:var(--ink2); text-align:center; margin:2px 0 14px; }
+  figure { margin:10px 0 6px; page-break-inside:avoid; text-align:center; }
+  figure img { max-width:100%; }
+  pre, code { font-family: Consolas, "Courier New", monospace; font-size:8.6pt; }
+  pre { background:#f6f6f4; border-left:3px solid var(--accent); padding:8px 10px; white-space:pre-wrap; page-break-inside:avoid; line-height:1.35; }
+  .eq { text-align:center; font-style:italic; margin:8px 0; font-size:10.8pt; }
+  .box { border:1px solid var(--rule); background:#fafafa; padding:8px 12px; margin:10px 0; page-break-inside:avoid; }
+  .box b.h { font-family:"Segoe UI",Arial,sans-serif; display:block; margin-bottom:3px; }
+  ul, ol { margin:4px 0 8px 0; padding-left:22px; }
+  li { margin:2px 0; }
+  .refs li { font-size:9pt; margin:3px 0; }
+  .pb { page-break-before:always; }
+  .small { font-size:9pt; color:var(--ink2); }
+  svg text { font-family:"Segoe UI",Arial,sans-serif; }
+</style>
+</head>
+<body>
+
+<div class="title">
+  <div class="kicker">FINAL PROJECT REPORT</div>
+  <h1>GreenOps Cloud Orchestration</h1>
+  <div class="sub">Spatial and Temporal Demand Shifting for Carbon-Aware Cloud Workload Scheduling</div>
+  <div class="authors">Mohammed Faheem K (24MID0158) &middot; Nithish Kumar (24MIC0032) &middot; Sanjeev Kumar (24MID0172)</div>
+  <div class="inst">Vellore Institute of Technology, Vellore</div>
+</div>
+
+<h2>Abstract</h2>
+<p>Cloud data centres are a fast-growing source of electricity demand. Conventional workload schedulers optimise execution time, resource availability and cost, and ignore the carbon intensity of the electricity that powers each job. Because carbon intensity varies substantially across regions and across the hours of a day, the same workload can produce very different emissions depending on <em>where</em> and <em>when</em> it runs. This project designs, implements and evaluates <b>GreenOps</b>, a multi-objective carbon-aware scheduler for geo-distributed clouds. GreenOps combines <b>spatial shifting</b> (routing a job to a cleaner region) with forecast-aware <b>temporal shifting</b> (deferring a flexible job to a cleaner hour). It jointly trades off forecast carbon emissions, compute cost and SLA risk, while treating deadlines, budgets and data-residency rules as hard constraints.</p>
+<p>The system is evaluated in a SimPy discrete-event simulator driven by <b>real historical carbon-intensity traces</b> for January and July 2024. The traces are derived from the generation mix of the German, Norwegian, French and Polish grids, from National Grid ESO data for Great Britain, and from a model calibrated to Indian CEA data. The carbon forecast error is calibrated against real grid-operator forecasts. Across 20 random seeds and two seasons (300 heterogeneous jobs per run), GreenOps reduces emissions by <b>26.8&nbsp;%</b> compared with carbon-agnostic Round Robin and by <b>5.3&nbsp;%</b> compared with a greedy greenest-region scheduler (p&nbsp;&lt;&nbsp;0.001), at a cost increase of 0.65&nbsp;%. It comes within 1.2&nbsp;% of an aggressive carbon-greedy temporal scheduler, with <b>90&nbsp;% fewer SLA violations</b> and roughly half the tail latency. GreenOps degrades less than the greedy scheduler under forecast error, and its advantage grows with system load. A weight sweep traces a carbon&ndash;cost Pareto frontier whose hypervolume (0.74&ndash;0.75) clearly exceeds that of all baselines combined (0.52). The evaluation also characterises the <b>practical limits</b> of shifting: most of the temporal benefit comes from deferrals of only 2&ndash;4&nbsp;hours, and spatial shifting dominates whenever a very clean region has free capacity. This agrees with the critique of Acun et&nbsp;al.&nbsp;[1].</p>
+
+<h2>1. Introduction</h2>
+<h3>1.1 Background and Motivation</h3>
+<p>Cloud infrastructure accounts for a significant and growing share of global electricity consumption. Scheduling decisions about where and when a workload executes directly determine how much of that electricity comes from carbon-intensive sources. Conventional schedulers, such as Kubernetes' default bin-packing scheduler, cloud autoscalers and HPC batch systems, are built around execution time, resource availability and monetary cost. Carbon intensity, the mass of CO<sub>2</sub>-equivalent emitted per kWh consumed, is not part of the decision.</p>
+<p>Carbon intensity is far from static. The real traces used in this project show that, over the same hours of January 2024, the Norwegian grid (mainly hydro) averaged 28&nbsp;gCO<sub>2</sub>eq/kWh while the Polish grid (mainly coal) averaged 586. Over the same periods, the German grid ranged between 130 and 650&nbsp;g/kWh, often moving by more than 300&nbsp;g/kWh within a single day as wind and solar output rose and fell. The same job, with the same code and resource footprint, can therefore emit more than twenty times as much CO<sub>2</sub> depending only on its placement and timing.</p>
+
+<h3>1.2 Problem Statement</h3>
+<p>Existing cloud scheduling approaches do not jointly account for carbon intensity, compute cost and SLA deadlines when making placement and timing decisions. Approaches that consider carbon usually optimise it in isolation, for example by always routing to the currently greenest region, and ignore the cost and latency consequences. Most also assume perfect knowledge of future carbon intensity. This project investigates whether a scheduler can treat carbon as a first-class objective alongside cost and SLA compliance, remain robust to imperfect forecasts, and still respect strict deadlines.</p>
+
+<h3>1.3 Objectives</h3>
+<ul>
+  <li>Design and implement a multi-region cloud simulation environment with realistic differences in carbon intensity, compute cost and energy characteristics, driven by real historical carbon data.</li>
+  <li>Implement spatial shifting and forecast-aware temporal shifting as coordinated mechanisms within one decision.</li>
+  <li>Design a multi-objective decision engine that jointly weighs carbon, cost and SLA risk under hard constraints, in both weighted-sum and Pareto variants.</li>
+  <li>Evaluate it against Round Robin, Cost Only, Greenest Region and Temporal Green on carbon, cost, SLA compliance and latency, with multiple seeds, two seasons and statistical tests.</li>
+  <li>Characterise robustness to forecast error, sensitivity to load and deferral windows, scalability, and the practical limits of carbon-aware shifting.</li>
+</ul>
+
+<h3>1.4 Scope</h3>
+<p>The work is simulation-based. It models six regions: India, Germany and Norway form the core set, and France, Poland and Great Britain extend it. Carbon traces are hourly over two four-week periods. Workloads are synthetic but heterogeneous (strict real-time, deadline-bound batch, and flexible jobs) with budgets and data-residency constraints. Integration with real cloud provider APIs is outside the scope of this project.</p>
+
+<h3>1.5 Project Status</h3>
+<p>The interim report assessed the project at about 50&nbsp;% complete, with large-scale validation, historical carbon traces, forecast-uncertainty analysis and Pareto evaluation still pending. All of these items are now complete (Table&nbsp;4.1). In the process, several simulator defects were found and fixed (Section&nbsp;4.3), so the preliminary five-job numbers have been re-run on the corrected simulator.</p>
+
+<h2>2. Literature Review</h2>
+<h3>2.1 Overview</h3>
+<p>Twenty papers were surveyed across eight research threads (Table&nbsp;2.1). Temporal shifting was popularised by Wiesner et&nbsp;al.&nbsp;[17], who showed that deferring delay-tolerant jobs to low-carbon periods reduces emissions, with gains that depend on the region and the degree of flexibility. Spatial and geo-distributed load balancing goes back to carbon-aware load balancing for geo-distributed services [20] and has been revisited for serverless functions [16,18] and edge environments [2,3]. Industrial deployments shape the time-varying capacity of datacentres using carbon forecasts [14]. CarbonScaler [15] exploits workload elasticity, and Ecovisor [19] exposes a virtual energy system to applications. Acun et&nbsp;al.&nbsp;[1] systematically analyse the <em>limits</em> of both forms of shifting. They find that much of the potential is captured by simple policies, that spatial shifting is limited by capacity and latency constraints, and that the benefit of temporal shifting saturates quickly. Sukprasert et&nbsp;al.&nbsp;[4] extend spatio-temporal shifting to water and land-use footprints. Lechowicz et&nbsp;al.&nbsp;[12] give competitive online algorithms for spatio-temporal allocation with deadlines, and forecast uncertainty is addressed with distributionally robust optimisation in [11].</p>
+
+<table>
+<tr><th>Research thread</th><th>Focus</th></tr>
+<tr><td>Carbon-aware scheduling</td><td>Placing or timing workloads to minimise emissions from electricity use [7,9,13,14]</td></tr>
+<tr><td>Temporal (time-shift) scheduling</td><td>Delaying flexible work to lower-carbon windows [5,8,17]</td></tr>
+<tr><td>Spatial (region-shift) scheduling</td><td>Routing work to regions with cleaner electricity [3,18,20]</td></tr>
+<tr><td>General cloud scheduling</td><td>Execution time, resource availability and cost [6,10]</td></tr>
+<tr><td>Serverless scheduling</td><td>Function-level placement in FaaS platforms [16,18]</td></tr>
+<tr><td>Edge&ndash;cloud scheduling</td><td>Joint placement across edge and cloud tiers [2,3]</td></tr>
+<tr><td>Carbon-aware workload management</td><td>Operational practices, elasticity and energy virtualisation [15,19]</td></tr>
+<tr><td>Multi-objective / robust optimisation</td><td>Balancing competing objectives under uncertainty [4,11,12]</td></tr>
+</table>
+<div class="cap">Table 2.1: Research threads covered by the literature survey</div>
+
+<h3>2.2 Comparative Analysis</h3>
+<table>
+<tr><th>Approach</th><th>Spatial</th><th>Temporal</th><th>Cost</th><th>SLA</th><th>Forecast error</th><th>Multi-obj.</th></tr>
+<tr><td>Carbon-aware only (greenest region)</td><td>Yes</td><td>No</td><td>No</td><td>No</td><td>&ndash;</td><td>No</td></tr>
+<tr><td>Temporal shift only</td><td>No</td><td>Yes</td><td>Partial</td><td>Partial</td><td>Rarely</td><td>No</td></tr>
+<tr><td>Cost/SLA-focused cloud schedulers</td><td>No</td><td>No</td><td>Yes</td><td>Yes</td><td>&ndash;</td><td>No</td></tr>
+<tr class="hl"><td>GreenOps (this work)</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes (hard)</td><td>Yes (modelled + gated)</td><td>Yes</td></tr>
+</table>
+<div class="cap">Table 2.2: Capability comparison between representative prior approaches and this work</div>
+
+<h3>2.3 Research Gaps and How They Are Addressed</h3>
+<table>
+<tr><th>Gap identified</th><th>How this project addresses it</th></tr>
+<tr><td>Spatial, temporal, cost and SLA objectives are rarely combined in one validated scheduler</td><td>One decision over (region &times; start time) candidates with carbon, cost and SLA-risk objectives and hard constraints (&sect;3.5)</td></tr>
+<tr><td>Reliance on synthetic carbon data</td><td>Hourly traces derived from the real generation mix (Energy-Charts) and real NG-ESO data for two seasons of 2024 (&sect;4.2)</td></tr>
+<tr><td>Forecast uncertainty ignored</td><td>Horizon-dependent, autocorrelated forecast error calibrated on real forecasts; a confidence gate; hourly re-planning (&sect;3.6, E3)</td></tr>
+<tr><td>Weighted sums dominate; no Pareto analysis</td><td>A Pareto/Tchebycheff mode, a weight sweep over the objective simplex, and a hypervolume comparison (E2)</td></tr>
+<tr><td>Thin statistical validation</td><td>20 seeds &times; 2 seasons, mean &plusmn; std, paired permutation tests, and tuning seeds separated from evaluation seeds (E1)</td></tr>
+</table>
+<div class="cap">Table 2.3: Literature gaps and their treatment in this project</div>
+
+<h2>3. Design</h2>
+<h3>3.1 Design Goals</h3>
+<p>The system is designed around four goals. (1) Carbon intensity is a first-class signal that varies by region and over time. (2) Spatial and temporal shifting are complementary and decided jointly, not as separate strategies. (3) SLA compliance is never traded for carbon: deadlines, budgets and data-residency rules are hard constraints. (4) The trade-off between carbon, cost and SLA risk is explicit and measurable, both through tunable weights and through the Pareto frontier those weights trace.</p>
+
+<h3>3.2 System Architecture</h3>
+<figure>
+<svg viewBox="0 0 760 330" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#444"/></marker></defs>
+  <g font-size="11" fill="#111">
+    <rect x="10" y="20" width="150" height="60" rx="6" fill="#fff" stroke="#444"/>
+    <text x="85" y="44" text-anchor="middle" font-weight="600">Workload source</text>
+    <text x="85" y="62" text-anchor="middle" font-size="9.5">strict / batch / flexible</text>
+    <rect x="10" y="110" width="150" height="74" rx="6" fill="#fff" stroke="#444"/>
+    <text x="85" y="132" text-anchor="middle" font-weight="600">Workload manager</text>
+    <text x="85" y="149" text-anchor="middle" font-size="9.5">arrival, runtime, deadline</text>
+    <text x="85" y="163" text-anchor="middle" font-size="9.5">CPU/mem, budget, priority</text>
+    <text x="85" y="177" text-anchor="middle" font-size="9.5">allowed regions</text>
+    <rect x="10" y="225" width="150" height="80" rx="6" fill="#fff" stroke="#444"/>
+    <text x="85" y="247" text-anchor="middle" font-weight="600">Carbon data</text>
+    <text x="85" y="264" text-anchor="middle" font-size="9.5">Energy-Charts, NG-ESO,</text>
+    <text x="85" y="278" text-anchor="middle" font-size="9.5">CEA model &rarr; Forecaster</text>
+    <text x="85" y="292" text-anchor="middle" font-size="9.5">(error &sigma;(h), AR(1))</text>
+
+    <rect x="200" y="20" width="300" height="285" rx="8" fill="#eef4fc" stroke="#1c5cab" stroke-width="1.5"/>
+    <text x="350" y="40" text-anchor="middle" font-weight="700" fill="#1c5cab">GreenOps decision engine</text>
+    <rect x="220" y="52" width="260" height="40" rx="5" fill="#fff" stroke="#888"/>
+    <text x="350" y="69" text-anchor="middle" font-weight="600">1. Hard constraints</text>
+    <text x="350" y="84" text-anchor="middle" font-size="9.5">locality &middot; capacity &middot; budget &middot; deadline</text>
+    <rect x="220" y="102" width="260" height="40" rx="5" fill="#fff" stroke="#888"/>
+    <text x="350" y="119" text-anchor="middle" font-weight="600">2. Candidates (region &times; start hour)</text>
+    <text x="350" y="134" text-anchor="middle" font-size="9.5">spatial loop &times; temporal loop (strict: now only)</text>
+    <rect x="220" y="152" width="260" height="40" rx="5" fill="#fff" stroke="#888"/>
+    <text x="350" y="169" text-anchor="middle" font-weight="600">3. Objectives</text>
+    <text x="350" y="184" text-anchor="middle" font-size="9.5">forecast carbon (+&kappa;&sigma;) &middot; cost &middot; convex SLA risk</text>
+    <rect x="220" y="202" width="260" height="40" rx="5" fill="#fff" stroke="#888"/>
+    <text x="350" y="219" text-anchor="middle" font-weight="600">4. Selection</text>
+    <text x="350" y="234" text-anchor="middle" font-size="9.5">weighted sum  |  Pareto front + Tchebycheff knee</text>
+    <rect x="220" y="252" width="260" height="40" rx="5" fill="#fff" stroke="#888"/>
+    <text x="350" y="269" text-anchor="middle" font-weight="600">5. Dispatch</text>
+    <text x="350" y="284" text-anchor="middle" font-size="9.5">run now &middot; defer + re-plan hourly &middot; queue</text>
+
+    <rect x="540" y="20" width="210" height="110" rx="6" fill="#fff" stroke="#444"/>
+    <text x="645" y="40" text-anchor="middle" font-weight="600">Distributed cloud (SimPy)</text>
+    <rect x="552" y="52" width="58" height="30" rx="4" fill="#e8f6f0" stroke="#1baf7a"/><text x="581" y="71" text-anchor="middle" font-size="9.5">India</text>
+    <rect x="616" y="52" width="58" height="30" rx="4" fill="#fdeee7" stroke="#eb6834"/><text x="645" y="71" text-anchor="middle" font-size="9.5">Germany</text>
+    <rect x="680" y="52" width="58" height="30" rx="4" fill="#e9f1fb" stroke="#2a78d6"/><text x="709" y="71" text-anchor="middle" font-size="9.5">Norway</text>
+    <text x="645" y="102" text-anchor="middle" font-size="9.5">+ France, Poland, GB (extended)</text>
+    <text x="645" y="117" text-anchor="middle" font-size="9.5">CPU, memory, price, power, PUE</text>
+    <rect x="540" y="150" width="210" height="60" rx="6" fill="#fff" stroke="#444"/>
+    <text x="645" y="172" text-anchor="middle" font-weight="600">Execution engine</text>
+    <text x="645" y="189" text-anchor="middle" font-size="9.5">allocate &rarr; run &rarr; release;</text>
+    <text x="645" y="202" text-anchor="middle" font-size="9.5">actual CI averaged over run window</text>
+    <rect x="540" y="230" width="210" height="75" rx="6" fill="#fff" stroke="#444"/>
+    <text x="645" y="252" text-anchor="middle" font-weight="600">Metrics &amp; evaluation</text>
+    <text x="645" y="269" text-anchor="middle" font-size="9.5">carbon, energy, cost, SLA, tardiness,</text>
+    <text x="645" y="283" text-anchor="middle" font-size="9.5">latency p95/p99, region share;</text>
+    <text x="645" y="297" text-anchor="middle" font-size="9.5">seeds, Pareto/HV, significance</text>
+  </g>
+  <g stroke="#444" stroke-width="1.4" fill="none" marker-end="url(#a)">
+    <path d="M85,80 L85,108"/>
+    <path d="M160,147 L218,72"/>
+    <path d="M160,265 L218,172"/>
+    <path d="M480,272 L538,185"/>
+    <path d="M645,130 L645,148"/>
+    <path d="M645,210 L645,228"/>
+    <path d="M538,120 C520,150 505,150 482,150" stroke-dasharray="4 3"/>
+  </g>
+  <text x="508" y="146" font-size="8.5" fill="#444">capacity</text>
+</svg>
+</figure>
+<div class="cap">Figure 3.1: GreenOps architecture and decision pipeline</div>
+<p>A workload source generates heterogeneous jobs that the workload manager annotates with arrival time, runtime, resources, deadline, flexibility class, budget, carbon priority and allowed regions. The GreenOps decision engine, the core contribution, receives each job together with the regions' current capacity and the carbon forecaster's predictions. It filters infeasible options, enumerates (region, start time) candidates, evaluates three objectives, and selects one candidate. The dispatcher then runs the job immediately, defers it (re-planning every hour with a fresher forecast), or queues it until capacity is released. The execution engine charges each job the <em>actual</em> carbon intensity averaged over its whole run window, and the metrics engine records every outcome, including rejected and late jobs.</p>
+
+<h3>3.3 Workload Model</h3>
+<table>
+<tr><th>Class</th><th class="n">Share</th><th>CPU</th><th>Runtime (h)</th><th>Deadline slack (h)</th><th>Budget (&times; cheapest cost)</th><th>Carbon priority</th></tr>
+<tr><td>Strict (real-time API)</td><td class="n">40&nbsp;%</td><td>1&ndash;4</td><td>1&ndash;3</td><td>2&ndash;5 (never deferred)</td><td>1.3&ndash;2.2</td><td>0.2&ndash;0.6</td></tr>
+<tr><td>Batch (deadline-bound analytics)</td><td class="n">35&nbsp;%</td><td>2&ndash;8</td><td>2&ndash;6</td><td>5&ndash;10</td><td>1.1&ndash;2.0</td><td>0.5&ndash;0.8</td></tr>
+<tr><td>Flexible (background / ML training)</td><td class="n">25&nbsp;%</td><td>2&ndash;8</td><td>2&ndash;6</td><td>8&ndash;16</td><td>1.05&ndash;1.9</td><td>0.7&ndash;1.0</td></tr>
+</table>
+<div class="cap">Table 3.1: Workload classes produced by <code>generate_workload.py</code></div>
+<p>Inter-arrival times are 0&ndash;3&nbsp;h (mean 1.45&nbsp;h, scaled by a load factor), so jobs overlap and compete for capacity. Budgets are proportional to the cheapest achievable cost of the job, which means a free-to-move job needs a budget multiplier of at least 1.75 to afford Norway. 25&nbsp;% of jobs carry a <b>data-residency constraint</b> that pins them to one home region, as with Indian payment data or a German sovereign-cloud workload. For these jobs spatial shifting is impossible and only temporal shifting can reduce emissions.</p>
+
+<h3>3.4 Multi-Region Cloud Environment</h3>
+<table>
+<tr><th>Region</th><th class="n">$/CPU-h</th><th class="n">Idle / max kW</th><th class="n">PUE</th><th class="n">Mean CI winter</th><th class="n">Mean CI summer</th><th>Trace source</th></tr>
+<tr><td>India</td><td class="n">0.08</td><td class="n">0.12 / 0.55</td><td class="n">1.60</td><td class="n">708</td><td class="n">633</td><td>modelled (CEA-calibrated)</td></tr>
+<tr><td>Germany</td><td class="n">0.11</td><td class="n">0.10 / 0.50</td><td class="n">1.30</td><td class="n">353</td><td class="n">331</td><td>Energy-Charts mix &times; IPCC AR5</td></tr>
+<tr><td>Norway</td><td class="n">0.14</td><td class="n">0.08 / 0.42</td><td class="n">1.15</td><td class="n">28</td><td class="n">31</td><td>Energy-Charts mix &times; IPCC AR5</td></tr>
+<tr><td>France</td><td class="n">0.12</td><td class="n">0.10 / 0.48</td><td class="n">1.35</td><td class="n">52</td><td class="n">29</td><td>Energy-Charts mix &times; IPCC AR5</td></tr>
+<tr><td>Poland</td><td class="n">0.09</td><td class="n">0.11 / 0.52</td><td class="n">1.45</td><td class="n">586</td><td class="n">626</td><td>Energy-Charts mix &times; IPCC AR5</td></tr>
+<tr><td>Great Britain</td><td class="n">0.13</td><td class="n">0.10 / 0.48</td><td class="n">1.35</td><td class="n">159</td><td class="n">113</td><td>National Grid ESO (actual + forecast)</td></tr>
+</table>
+<div class="cap">Table 3.2: Region parameters (16 vCPU / 32 GB each). CI = carbon intensity in gCO<sub>2</sub>eq/kWh.</div>
+<p>No region dominates on every objective. India is cheapest but dirtiest, Norway is cleanest but most expensive, and Germany sits between them with large hour-to-hour swings, which is where temporal shifting matters (Figure&nbsp;3.2). Energy follows a utilisation-proportional power model with facility overhead: a job using a share <i>u</i>&nbsp;=&nbsp;cpu/capacity of a region draws <i>u</i>&middot;<i>P</i><sub>idle</sub> + <i>u</i>&middot;(<i>P</i><sub>max</sub>&minus;<i>P</i><sub>idle</sub>), multiplied by the PUE. Jobs running side by side therefore add up to the region's real power draw.</p>
+<figure><img src="../results/figures/fig1_carbon_traces.png" alt="carbon traces"></figure>
+<div class="cap">Figure 3.2: First week of the hourly carbon-intensity traces of the core regions</div>
+
+<h3>3.5 Formal Problem Formulation</h3>
+<p>At decision time <i>t</i>, a job <i>j</i> with runtime <i>d<sub>j</sub></i>, deadline <i>D<sub>j</sub></i>, latest start <i>L<sub>j</sub></i>&nbsp;=&nbsp;<i>D<sub>j</sub></i>&minus;<i>d<sub>j</sub></i>, budget <i>B<sub>j</sub></i>, allowed regions <i>A<sub>j</sub></i> and carbon priority <i>p<sub>j</sub></i> chooses a candidate <i>x</i>&nbsp;=&nbsp;(<i>r</i>,&nbsp;<i>s</i>) from</p>
+<p class="eq">X<sub>j</sub>(t) = { (r, s) : r &isin; A<sub>j</sub>, &nbsp;cost<sub>r</sub>(j) &le; B<sub>j</sub>, &nbsp;s &isin; {t, &lceil;t&rceil;, &lceil;t&rceil;+1, &hellip;, min(t+W, L<sub>j</sub>)}, &nbsp;s=t &rArr; r has free capacity }</p>
+<p>with deferral window <i>W</i> (0 for strict jobs). Three objectives are minimised:</p>
+<p class="eq">C(x) = E<sub>r</sub>(j) &middot; &#7810;<sub>r</sub>(t; s, s+d<sub>j</sub>) &middot; (1 + &kappa;&middot;&sigma;(s&minus;t)) &nbsp;&nbsp;&nbsp; K(x) = cpu<sub>j</sub>&middot;d<sub>j</sub>&middot;price<sub>r</sub> &nbsp;&nbsp;&nbsp; R(x) = ((s&minus;t)/(L<sub>j</sub>&minus;t))<sup>2</sup></p>
+<p>Here &#7810;<sub>r</sub> is the <em>forecast</em> carbon intensity averaged over the run window, and &sigma;(<i>h</i>) is the forecast's relative error at horizon <i>h</i>. The term &kappa;&sigma; is a <b>confidence gate</b>: a deferred candidate is judged by a pessimistic estimate, so the scheduler only waits when the expected saving exceeds what the forecast could plausibly get wrong. <i>R</i> is the share of the remaining slack consumed by waiting. It is made <b>convex</b> so that waiting is cheap while slack is plentiful and expensive near the deadline. A linear penalty, as used in the preliminary version, suppressed almost all useful temporal shifting.</p>
+<div class="box"><b class="h">Weighted mode (default)</b>score(x) = w<sub>c</sub>&middot;p<sub>j</sub>&middot;C(x)/C<sub>max</sub> + w<sub>k</sub>&middot;K(x)/K<sub>max</sub> + w<sub>r</sub>&middot;R(x), with (w<sub>c</sub>, w<sub>k</sub>, w<sub>r</sub>) = (0.6, 0.2, 0.2) and &kappa; = 0.5. Ratio-to-max normalisation keeps relative magnitudes: a 2&nbsp;g difference between 300&nbsp;g and 302&nbsp;g is not stretched to the full [0,&nbsp;1] range, as min-max normalisation would do.</div>
+<div class="box"><b class="h">Pareto mode</b>Keep only non-dominated candidates in (C, K, R), then choose the one minimising the weighted Tchebycheff distance max<sub>i</sub> w<sub>i</sub>&middot;(f<sub>i</sub>&minus;f<sub>i</sub><sup>*</sup>)/(f<sub>i</sub><sup>N</sup>&minus;f<sub>i</sub><sup>*</sup>) to the ideal point f<sup>*</sup>, normalised by the nadir f<sup>N</sup> of the front. Unlike a weighted sum, this can select points on non-convex parts of the front.</div>
+
+<h3>3.6 Decision Algorithm</h3>
+<pre>on arrival of job j at time t:
+    if no region satisfies locality, size and budget:  REJECT(j)            # recorded, never silent
+    loop:
+        X  &larr; feasible (region, start) candidates            # spatial &times; temporal, hard constraints
+        if X = &empty;:  wait for next resource release; continue   # queue, never drop
+        x* &larr; argmin score(x)  (or Pareto + Tchebycheff knee)
+        if start(x*) = t and region(x*) has capacity:  RUN(j, region(x*)); break
+        if start(x*) &minus; t &gt; 1 h:  sleep 1 h; continue           # re-plan with a fresher forecast
+        sleep until start(x*)
+        if region(x*) has capacity:  RUN(j, region(x*)); break     # else re-decide
+RUN: allocate &rarr; energy = E_r(j) &rarr; carbon = energy &times; ACTUAL mean CI over [start, start+d] &rarr; release</pre>
+<p>The forecaster models the carbon-intensity API. A forecast issued at <i>t</i> for hour <i>&tau;</i> equals the actual value multiplied by (1&nbsp;+&nbsp;&sigma;(<i>&tau;</i>&minus;<i>t</i>)&middot;<i>z<sub>r</sub></i>(<i>&tau;</i>)), with &sigma;(<i>h</i>)&nbsp;=&nbsp;&epsilon;&middot;&radic;(min(<i>h</i>,24)/24). Here <i>z<sub>r</sub></i> is an AR(1) process (&rho;&nbsp;=&nbsp;0.7), so errors persist over consecutive hours and shrink as the target approaches. Comparing National Grid ESO's published forecasts with actual values for January and July 2024 gives a relative RMSE of 0.11&ndash;0.15 and lag-1 autocorrelation of 0.62&ndash;0.69. The realistic setting &epsilon;&nbsp;=&nbsp;0.15 is taken from these values.</p>
+
+<h3>3.7 Baseline Schedulers</h3>
+<ul>
+<li><b>Round Robin</b>: cycles through the feasible regions, ignoring carbon and cost (Kubernetes-default-like spreading).</li>
+<li><b>Cost Only</b>: always picks the cheapest feasible region.</li>
+<li><b>Greenest Region</b>: runs immediately in the region with the lowest <em>current</em> intensity (greedy spatial-only).</li>
+<li><b>Temporal Green</b>: carbon-greedy spatio-temporal search over the same window as GreenOps. It trusts the forecast blindly, ignores cost and SLA risk, and never re-plans.</li>
+<li><b>Ablations</b>: GreenOps with <i>W</i>&nbsp;=&nbsp;0 (spatial only), and GreenOps in Pareto mode.</li>
+</ul>
+<p>To keep the comparison fair, every baseline enforces the same locality, capacity and budget constraints, and all policies run in the same queueing simulator.</p>
+
+<h2>4. Implementation</h2>
+<h3>4.1 Implementation Status</h3>
+<table>
+<tr><th>Area</th><th>Interim report</th><th>Final status</th></tr>
+<tr><td>Multi-region simulation environment</td><td>Functional</td><td>Complete: queueing, deferral, re-planning, admission control, PUE</td></tr>
+<tr><td>Workload representation</td><td>Functional</td><td>Complete: 3 classes, size-proportional budgets, data residency, load scaling</td></tr>
+<tr><td>Spatial / temporal shifting</td><td>Demonstrated</td><td>Complete: joint, forecast-aware, re-planned hourly</td></tr>
+<tr><td>Multi-objective scheduler</td><td>Preliminary</td><td>Complete: weighted and Pareto/Tchebycheff modes, convex SLA risk, confidence gate</td></tr>
+<tr><td>Real historical carbon traces</td><td>Pending</td><td>Complete: 6 regions &times; 2 seasons &times; 672 h</td></tr>
+<tr><td>Forecast uncertainty analysis</td><td>Pending</td><td>Complete: calibrated error model, 0&ndash;50&nbsp;% sweep (E3)</td></tr>
+<tr><td>Large-scale, multi-seed validation</td><td>Pending</td><td>Complete: 20 seeds &times; 2 seasons &times; 300 jobs; up to 5,000 jobs (E1, E7)</td></tr>
+<tr><td>Pareto frontier / sensitivity analysis</td><td>Pending</td><td>Complete: 66-point simplex sweep, hypervolume, deferral and load sweeps (E2, E4, E5)</td></tr>
+<tr><td>Automated tests</td><td>&ndash;</td><td>34 unit and integration tests, all passing</td></tr>
+</table>
+<div class="cap">Table 4.1: Implementation status</div>
+<p>The implementation is written in Python 3.14 with SimPy 4.1, pandas and matplotlib. It is organised into <code>sim</code> (Job, Region, CarbonForecaster, CloudSimulator), <code>schedulers</code> (four baselines and GreenOps), <code>metrics</code>, <code>experiments</code> (scenario builder, single-run CLI, preliminary comparison, evaluation suite and plots), <code>data</code> (trace pipeline and workload generator) and <code>tests</code>. The full evaluation, about 5,800 simulations, runs in roughly one minute on a 16-core laptop.</p>
+
+<h3>4.2 Carbon-Trace Pipeline</h3>
+<p><code>data/fetch_carbon_traces.py</code> downloads 15-minute generation data by production type from the Energy-Charts API (Fraunhofer ISE) for Germany, Norway, France and Poland. Each hour's intensity is the generation-weighted mean of IPCC AR5 lifecycle emission factors (for example coal 820, gas 490, hydro 24, nuclear 12, wind 11, solar 45&nbsp;g/kWh, and lignite 1,100). This is the convention used by Electricity Maps. For Great Britain, it fetches the actual and forecast half-hourly intensity from the National Grid ESO Carbon Intensity API. India has no free hourly source, so its trace is <em>modelled</em>: a CEA-calibrated mean (720&nbsp;g/kWh in winter, 650&nbsp;g/kWh in the monsoon), a solar dip at midday IST, an evening peak and autocorrelated noise. It is clearly labelled as modelled in the data files. All traces are stored locally, so experiments never depend on live API calls.</p>
+
+<h3>4.3 Corrections to the Preliminary Simulator</h3>
+<p>Scaling from 5 to 300 jobs exposed several defects that the five-job experiment could not reveal:</p>
+<ol>
+<li><b>Silently dropped jobs.</b> A job whose chosen region was full, or which would be late, was printed and discarded, yet <code>completed_jobs</code> was set to <code>total_jobs</code>. Jobs are now queued until capacity frees up, late jobs run and are recorded with their tardiness, and infeasible jobs are explicitly rejected.</li>
+<li><b>Budget calibration.</b> Budgets were drawn independently of job size, which caused 26&nbsp;% of the 100-job workload to be unaffordable in every region. Budgets are now proportional to the cheapest achievable cost in the job's allowed regions.</li>
+<li><b>Inconsistent energy models.</b> The scheduler estimated energy as cpu&times;runtime, while the engine used the regional power model. Both now use the same model.</li>
+<li><b>Idle power counted once per job.</b> Co-located jobs each paid the region's full idle power. Idle power is now shared in proportion to CPU share, and PUE is applied.</li>
+<li><b>Start-hour carbon.</b> Emissions used only the intensity at the start hour. They now use the time-weighted mean over the whole run window.</li>
+<li><b>24-hour cyclic traces.</b> Traces are now multi-week hourly series.</li>
+</ol>
+<p>Re-running the original five-job experiment on the corrected simulator (Table&nbsp;4.2) gives Cost Only 1,113&nbsp;g, Round Robin 565&nbsp;g, Greenest Region 92&nbsp;g, Temporal Green 82&nbsp;g and GreenOps MOO 92&nbsp;g, all with zero SLA violations. GreenOps' earlier figure of 258.5&nbsp;g was an artefact of defect&nbsp;3, which made the scheduler misjudge regional energy use.</p>
+<table>
+<tr><th>Scheduler</th><th class="n">Carbon (g)</th><th class="n">Energy (kWh)</th><th class="n">Cost ($)</th><th class="n">SLA viol.</th><th class="n">Avg latency (h)</th><th class="n">Interim report (g)</th></tr>
+<tr><td>Round Robin</td><td class="n">565.2</td><td class="n">1.36</td><td class="n">3.46</td><td class="n">0</td><td class="n">2.0</td><td class="n">673.5</td></tr>
+<tr><td>Cost Only</td><td class="n">1,113.2</td><td class="n">1.76</td><td class="n">2.56</td><td class="n">0</td><td class="n">2.0</td><td class="n">1,146</td></tr>
+<tr><td>Greenest Region</td><td class="n">92.4</td><td class="n">0.97</td><td class="n">4.48</td><td class="n">0</td><td class="n">2.0</td><td class="n">182</td></tr>
+<tr><td>Temporal Green</td><td class="n">82.1</td><td class="n">0.97</td><td class="n">4.48</td><td class="n">0</td><td class="n">2.8</td><td class="n">140</td></tr>
+<tr class="hl"><td>GreenOps MOO</td><td class="n">92.4</td><td class="n">0.97</td><td class="n">4.48</td><td class="n">0</td><td class="n">2.0</td><td class="n">258.5</td></tr>
+</table>
+<div class="cap">Table 4.2: Preliminary five-job experiment re-run on the corrected simulator (controlled 24-hour traces)</div>
+
+<h3>4.4 Testing</h3>
+<p>The test suite (<code>tests/test_greenops.py</code>, 34 tests) checks the guarantees the design relies on:</p>
+<ul>
+<li>A job with zero slack is never deferred, and strict jobs always start immediately.</li>
+<li>A job with a large slack waits for a clearly cleaner window, and no deferral ever breaks a deadline, including under noisy forecasts with re-planning.</li>
+<li>Budgets and data-residency rules are respected by every scheduler.</li>
+<li>Queued jobs are never lost, and late jobs are recorded with the correct tardiness.</li>
+<li>Carbon is averaged over the run window, and the energy of co-located jobs adds up to the region's power draw.</li>
+<li>The forecaster is exact at horizon 0 and converges as the target approaches.</li>
+<li>The Pareto filter, hypervolume and permutation test are correct.</li>
+</ul>
+
+<h2>5. Evaluation</h2>
+<h3>5.1 Methodology</h3>
+<p>Unless stated otherwise, each run uses 300 jobs on the three core regions (16 vCPU each), a deferral window of 12&nbsp;h, and the realistic forecast error (&epsilon;&nbsp;=&nbsp;0.15). Each configuration is run on both the January and the July 2024 traces. The main comparison (E1) uses seeds 0&ndash;19 (40 paired runs per scheduler) and the sensitivity studies use seeds 0&ndash;9. GreenOps' weights, &kappa; and risk exponent were chosen on separate <b>tuning seeds 100&ndash;104</b>, so that the reported results are not fitted to the evaluation data. Differences are tested with a two-sided paired sign-flip permutation test (20,000 permutations).</p>
+
+<h3>5.2 E1: Main Comparison</h3>
+<table>
+<tr><th>Scheduler</th><th class="n">Carbon (kg)</th><th class="n">&Delta; vs RR</th><th class="n">&Delta; vs Greenest</th><th class="n">Cost ($)</th><th class="n">Cost vs Cost-Only</th><th class="n">SLA viol./run</th><th class="n">Avg / p95 latency (h)</th></tr>
+<tr><td>Cost Only</td><td class="n">119.6 &plusmn; 8.9</td><td class="n">+22.2&nbsp;%</td><td class="n">+58.2&nbsp;%</td><td class="n">384</td><td class="n">0.0&nbsp;%</td><td class="n">0.15</td><td class="n">3.27 / 6.0</td></tr>
+<tr><td>Round Robin</td><td class="n">98.1 &plusmn; 9.0</td><td class="n">0.0&nbsp;%</td><td class="n">+29.4&nbsp;%</td><td class="n">417</td><td class="n">+8.4&nbsp;%</td><td class="n">0.15</td><td class="n">3.25 / 6.0</td></tr>
+<tr><td>Greenest Region</td><td class="n">76.0 &plusmn; 8.3</td><td class="n">&minus;22.6&nbsp;%</td><td class="n">0.0&nbsp;%</td><td class="n">452</td><td class="n">+17.6&nbsp;%</td><td class="n">0.20</td><td class="n">3.23 / 6.0</td></tr>
+<tr><td>Temporal Green</td><td class="n">71.1 &plusmn; 9.3</td><td class="n">&minus;27.7&nbsp;%</td><td class="n">&minus;6.6&nbsp;%</td><td class="n">454</td><td class="n">+18.1&nbsp;%</td><td class="n">2.80</td><td class="n">6.34 / 15.0</td></tr>
+<tr><td>GreenOps (spatial only)</td><td class="n">76.4 &plusmn; 8.3</td><td class="n">&minus;22.2&nbsp;%</td><td class="n">+0.6&nbsp;%</td><td class="n">450</td><td class="n">+17.2&nbsp;%</td><td class="n">0.20</td><td class="n">3.23 / 6.0</td></tr>
+<tr><td>GreenOps Pareto</td><td class="n">79.6 &plusmn; 9.0</td><td class="n">&minus;19.0&nbsp;%</td><td class="n">+4.7&nbsp;%</td><td class="n">434</td><td class="n">+13.0&nbsp;%</td><td class="n">3.05</td><td class="n">4.86 / 12.8</td></tr>
+<tr class="hl"><td>GreenOps MOO</td><td class="n">72.0 &plusmn; 8.9</td><td class="n">&minus;26.8&nbsp;%</td><td class="n">&minus;5.4&nbsp;%</td><td class="n">455</td><td class="n">+18.3&nbsp;%</td><td class="n">0.28</td><td class="n">3.67 / 7.3</td></tr>
+</table>
+<div class="cap">Table 5.1: E1 results pooled over both seasons (mean &plusmn; std over 40 runs). &Delta; columns are means of per-run paired ratios, so they differ slightly from ratios of the mean totals; for example, GreenOps vs Greenest Region is &minus;5.4&nbsp;% paired and &minus;5.3&nbsp;% on the totals.</div>
+<figure><img src="../results/figures/fig2_main_comparison.png" alt="main comparison"></figure>
+<div class="cap">Figure 5.1: Carbon, cost, tail latency and SLA violations per scheduler</div>
+<p><b>Findings.</b> (i) Optimising for cost alone is environmentally the worst policy: it is cheapest but emits 58&nbsp;% more than greedy greening. (ii) Spatial shifting delivers most of the reduction: Greenest Region already removes 22.6&nbsp;% of Round Robin's emissions. (iii) GreenOps adds a further, statistically significant <b>5.3&nbsp;%</b> reduction over Greenest Region (paired difference &minus;4.0&nbsp;kg, p&nbsp;&lt;&nbsp;0.001) for only 0.65&nbsp;% more cost. The gain is larger in summer (&minus;6.7&nbsp;%), when Germany's solar-driven swings are deeper, than in winter (&minus;4.1&nbsp;%). Its spatial-only ablation is no better than Greenest Region, so this extra reduction comes from <em>temporal</em> shifting. (iv) Temporal Green emits 1.2&nbsp;% less than GreenOps, but defers 48&nbsp;% of jobs (mean wait 3.1&nbsp;h) against GreenOps' 16&nbsp;% (0.47&nbsp;h). As a result it causes <b>10&times; as many SLA violations</b> (2.8 vs 0.28 per run, p&nbsp;&lt;&nbsp;0.001) and doubles the p95 latency. GreenOps' SLA violations are not significantly different from those of the carbon-agnostic baselines (p&nbsp;=&nbsp;0.28 vs Round Robin). They arise from rare moments when all regions are saturated and a strict job has to queue. Strict jobs had the same latency under every scheduler (mean 2.0&nbsp;h), confirming that real-time work is never deferred.</p>
+<figure><img src="../results/figures/fig7_latency_cdf.png" alt="latency CDF"></figure>
+<div class="cap">Figure 5.2: Latency distributions: strict jobs are unaffected, and GreenOps keeps batch/flexible latency close to the immediate-execution baselines</div>
+<figure><img src="../results/figures/fig8_region_share.png" alt="region share" style="max-width:85%"></figure>
+<div class="cap">Figure 5.3: Share of CPU-hours per region. Norway's capacity is the binding constraint for every carbon-aware policy.</div>
+
+<h3>5.3 E2: Pareto Frontier and Hypervolume</h3>
+<p>Sweeping the weights over a 66-point grid on the (w<sub>c</sub>, w<sub>k</sub>, w<sub>r</sub>) simplex traces the carbon&ndash;cost trade-off available to an operator (Figure&nbsp;5.4). Both GreenOps modes span a continuous frontier from cost-optimal (&asymp;$367, 130&nbsp;kg) to carbon-optimal (&asymp;$455, 68&nbsp;kg). All four baselines lie on or above this frontier, so GreenOps can match or improve on each of them by choosing its weights. Measured by normalised 2-D hypervolume (reference point 1.1), the Pareto/Tchebycheff family scores <b>0.754</b>, the weighted family <b>0.737</b>, and the four baselines together only <b>0.524</b>. The Pareto mode gives a slightly better frontier, but at the default weights it lands on a cost-leaning, high-latency point (Table&nbsp;5.1). The weighted mode is therefore the recommended default, and the Pareto mode is useful when an operator wants to explore the frontier.</p>
+<figure><img src="../results/figures/fig3_pareto_frontier.png" alt="pareto" style="max-width:82%"></figure>
+<div class="cap">Figure 5.4: Mean carbon vs cost per run for every weight vector (10 seeds &times; 2 seasons each)</div>
+
+<h3>5.4 E3: Robustness to Forecast Error</h3>
+<figure><img src="../results/figures/fig4_forecast_sensitivity.png" alt="forecast sensitivity"></figure>
+<div class="cap">Figure 5.5: Carbon and SLA violations as the 24-hour forecast error grows from 0 to 50&nbsp;%</div>
+<p>With perfect forecasts, Temporal Green emits the least, because it exploits the forecast without any regard for latency. As the error grows, its emissions rise by 4.9&nbsp;% (3 regions) and 4.5&nbsp;% (Germany only), and its SLA violations rise in the 3-region setting (2.0 &rarr; 3.6 per run). GreenOps degrades by only 1.9&nbsp;% and 2.6&nbsp;%. From 30&nbsp;% error onwards it emits <b>less</b> than Temporal Green in the 3-region scenario, while causing 80&ndash;90&nbsp;% fewer SLA violations. Hourly re-planning is the main source of this robustness: errors shrink as the target hour approaches, so a deferral based on an optimistic forecast is revised before it turns into a late start. The <b>confidence gate</b> did not reduce carbon. The ungated variant emitted 0.1&ndash;1.4&nbsp;% less, because the gate also blocks some correct deferrals. However, in the pure temporal scenario the gate lowered SLA violations by about 30&nbsp;% at realistic error levels (0.6 vs 0.9 per run at &epsilon;&nbsp;=&nbsp;0.15). The gate is best described as a <em>risk</em> control, not a carbon optimiser, and &kappa; lets operators set how much carbon they will give up for safety.</p>
+
+<h3>5.5 E4: How Much Temporal Flexibility Is Useful?</h3>
+<figure><img src="../results/figures/fig5_max_wait.png" alt="max wait"></figure>
+<div class="cap">Figure 5.6: Effect of the maximum deferral window</div>
+<p>The benefit of temporal shifting <b>saturates quickly</b>. In the 3-region scenario, GreenOps captures 95&nbsp;% of its total temporal reduction with a 2&nbsp;h window (74.6 &rarr; 70.2&nbsp;kg), and longer windows add almost nothing. Most of the gain comes from briefly waiting for capacity in Norway rather than from waiting for a cleaner hour. Temporal Green keeps waiting longer as the window grows. Its p95 latency climbs from 6 to 16&nbsp;h, and beyond 8&nbsp;h its emissions actually <em>rise</em>, because jobs pile up into the same clean hours and congest the clean region. When spatial shifting is impossible (Germany only), longer windows matter more: GreenOps realises 85&nbsp;% of its benefit within 4&nbsp;h, and Temporal Green keeps improving up to 18&nbsp;h, at a much higher latency (p95 15.9&nbsp;h vs 10.3&nbsp;h). These results quantify the practical limits described by Acun et&nbsp;al.&nbsp;[1]: deferral windows beyond a few hours mostly buy latency, not carbon.</p>
+
+<h3>5.6 E5: Load Sensitivity</h3>
+<figure><img src="../results/figures/fig6_load.png" alt="load"></figure>
+<div class="cap">Figure 5.7: Carbon relative to Greenest Region, and SLA violations, as the arrival rate is scaled</div>
+<p>At low load (0.5&times;), clean capacity is plentiful and greedy greening is almost optimal (GreenOps &minus;2.8&nbsp;%). As load grows, Norway saturates and the decision becomes a real spatio-temporal trade-off. GreenOps' advantage over Greenest Region grows to <b>&minus;9.8&nbsp;% at 2&times; load</b> and &minus;9.6&nbsp;% at 3&times;, overtaking Temporal Green from 1.5&times; onwards. Temporal Green's SLA violations grow sharply (15.5 per run at 2&times;, 39.7 at 3&times;). GreenOps stays close to the immediate-execution baselines (1.8 at 2&times;, 9.6 at 3&times;; Greenest Region 0.6 and 7.3), where violations are caused by queueing on saturated capacity.</p>
+
+<h3>5.7 E6: Extended Six-Region Scenario</h3>
+<table>
+<tr><th>Scheduler</th><th class="n">Carbon (kg)</th><th class="n">&Delta; vs Greenest</th><th class="n">Cost ($)</th><th class="n">SLA viol./run</th><th class="n">p95 latency (h)</th><th class="n">Share FR / NO / GB</th></tr>
+<tr><td>Cost Only</td><td class="n">117.1</td><td class="n">+106.7&nbsp;%</td><td class="n">383</td><td class="n">0.0</td><td class="n">6.0</td><td class="n">5 / 4 / 4&nbsp;%</td></tr>
+<tr><td>Round Robin</td><td class="n">86.9</td><td class="n">+53.4&nbsp;%</td><td class="n">426</td><td class="n">0.1</td><td class="n">6.0</td><td class="n">12 / 8 / 11&nbsp;%</td></tr>
+<tr><td>Greenest Region</td><td class="n">56.7</td><td class="n">0.0&nbsp;%</td><td class="n">462</td><td class="n">0.1</td><td class="n">6.0</td><td class="n">30 / 16 / 7&nbsp;%</td></tr>
+<tr><td>Temporal Green</td><td class="n">52.3</td><td class="n">&minus;7.7&nbsp;%</td><td class="n">463</td><td class="n">2.0</td><td class="n">15.1</td><td class="n">32 / 17 / 6&nbsp;%</td></tr>
+<tr class="hl"><td>GreenOps MOO</td><td class="n">52.9</td><td class="n">&minus;6.6&nbsp;%</td><td class="n">456</td><td class="n">0.4</td><td class="n">8.3</td><td class="n">43 / 6 / 5&nbsp;%</td></tr>
+</table>
+<div class="cap">Table 5.2: Six regions (India, Germany, Norway, France, Poland, Great Britain), 2&times; load, 10 seeds &times; 2 seasons</div>
+<p>With more clean regions available, GreenOps' reduction over greedy greening grows to 6.6&nbsp;%, and its cost is $6 <em>lower</em> than Greenest Region's. It moves work from expensive Norway to cheaper, almost equally clean France, a choice that a carbon-only policy cannot make.</p>
+
+<h3>5.8 E7: Scalability</h3>
+<table>
+<tr><th>Jobs</th><th class="n">Greenest Region</th><th class="n">Temporal Green</th><th class="n">GreenOps MOO</th><th class="n">GreenOps Pareto</th></tr>
+<tr><td>100</td><td class="n">0.006 s</td><td class="n">0.011 s</td><td class="n">0.016 s</td><td class="n">0.024 s</td></tr>
+<tr><td>1,000</td><td class="n">0.020 s</td><td class="n">0.059 s</td><td class="n">0.115 s</td><td class="n">0.280 s</td></tr>
+<tr><td>5,000</td><td class="n">0.104 s</td><td class="n">0.279 s</td><td class="n">0.444 s</td><td class="n">1.517 s</td></tr>
+<tr><td>Per decision</td><td class="n">0.02&ndash;0.06 ms</td><td class="n">0.04&ndash;0.08 ms</td><td class="n">0.07&ndash;0.12 ms</td><td class="n">0.12&ndash;0.14 ms</td></tr>
+</table>
+<div class="cap">Table 5.3: Total simulation wall-clock time and time per scheduling decision (single core)</div>
+<p>A GreenOps decision evaluates at most |regions|&nbsp;&times;&nbsp;(W+1) candidates and costs about 0.1&nbsp;ms, so total time grows linearly with the number of jobs. This is negligible next to real job runtimes and API latencies, so the approach is practical for online use. The Pareto filter is quadratic in the number of candidates but remains below 0.15&nbsp;ms.</p>
+
+<h2>6. Discussion</h2>
+<h3>6.1 Relation to the Limits Identified by Acun et al.</h3>
+<p>The results reproduce the central message of Acun et&nbsp;al.&nbsp;[1] and quantify it for a joint, cost-aware scheduler. Spatial shifting to a very clean region provides most of the benefit (22.6&nbsp;% of Round Robin's emissions), and adding temporal shifting yields a further 5&ndash;10&nbsp;%. The temporal benefit saturates within a few hours of deferral, and pushing beyond that mostly harms latency and SLA compliance. In this project the multi-objective formulation does not unlock large extra savings. Its value is in obtaining nearly all of the achievable reduction (within 1.2&nbsp;% of a carbon-greedy scheduler) without the latency and SLA costs, in remaining robust when forecasts are wrong, and in exposing the carbon&ndash;cost trade-off as an explicit, tunable frontier. The benefit of GreenOps is largest when simple greening fails: under high load, when clean capacity is scarce, and when several clean regions differ in price.</p>
+
+<h3>6.2 Limitations and Threats to Validity</h3>
+<ul>
+<li><b>Simulation, not deployment.</b> Region capacities are small (16 vCPU) to create contention, and the absolute numbers are illustrative. The relative comparisons are the result.</li>
+<li><b>India's trace is modelled</b>, not measured, and intensities are production-based averages that ignore imports. Marginal emission signals (WattTime) could give different shifting gains.</li>
+<li><b>Synthetic workloads.</b> Job classes and distributions are plausible but not fitted to a public cluster trace (Google, Alibaba, Azure).</li>
+<li><b>No data-transfer model.</b> Moving input data between regions costs time and energy, which would reduce the benefit of spatial shifting for data-heavy jobs.</li>
+<li><b>Capacity is not reserved for deferred jobs</b>. They re-check capacity when they wake and re-plan if it has been taken. Reservations could reduce the rare saturation-driven violations.</li>
+<li><b>Weights were tuned once</b> on separate seeds for the 3-region scenario and reused in all other scenarios. Scenario-specific tuning could improve them further.</li>
+</ul>
+
+<h2>7. Conclusion and Future Work</h2>
+<p>This project delivered a complete, tested and reproducible GreenOps orchestration framework. It comprises a discrete-event multi-region cloud simulator driven by real 2024 grid data, a calibrated carbon-forecast model, four baselines, and a multi-objective scheduler that jointly performs spatial and temporal shifting under hard SLA, budget and data-residency constraints. Across 40 paired runs it cut emissions by 26.8&nbsp;% compared with carbon-agnostic scheduling and by 5.3&nbsp;% compared with greedy greening, at almost no extra cost. It came within 1.2&nbsp;% of a carbon-greedy temporal scheduler while causing 90&nbsp;% fewer SLA violations and halving tail latency. It degraded more gracefully under forecast error, and its advantage grew with load and with the number of clean regions. The study also characterised the practical limits of carbon-aware shifting: a few hours of flexibility capture almost all of the temporal benefit, and spatial shifting is bounded by clean capacity.</p>
+<p><b>Future work:</b></p>
+<ul>
+<li>Replay real cluster traces (Google 2019, Alibaba, Azure).</li>
+<li>Use marginal-emission signals and live Carbon Aware SDK integration.</li>
+<li>Model data-transfer energy and latency.</li>
+<li>Add capacity reservations for deferred jobs.</li>
+<li>Learn the weights online per tenant.</li>
+<li>Deploy on a Kubernetes multi-cluster federation as a scheduler extender.</li>
+</ul>
+
+<h2>References</h2>
+<ol class="refs">
+<li>B. Acun, B. Lee, F. Kazhamiaka, K. Maeng, U. Gupta, M. Chakkaravarthy, D. Brooks, C.-J. Wu. On the Limitations of Carbon-Aware Temporal and Spatial Workload Shifting in the Cloud. EuroSys '24, 924&ndash;941, 2024.</li>
+<li>N. Asadov, V. C. Coroam&#259;. Carbon-Aware Spatio-Temporal Workload Shifting in Edge&ndash;Cloud Environments: A Review and Novel Algorithm. Sustainability 17(6433), 2025.</li>
+<li>L. Wu et al. CarbonEdge: Leveraging Mesoscale Spatial Carbon-Intensity Variations for Low Carbon Edge Computing. HPDC '25, 2025.</li>
+<li>T. Sukprasert, A. Souza, N. Bashir, D. Irwin, P. Shenoy. Spatio-Temporal Shifting to Reduce Carbon, Water, and Land-Use Footprints of Cloud Workloads. arXiv:2512.08725.</li>
+<li>Carbon-Aware Temporal Data Transfer Scheduling Across Cloud Datacenters. arXiv:2506.04117.</li>
+<li>A Survey on Task Scheduling in Carbon-Aware Container Orchestration. arXiv:2508.05949.</li>
+<li>S. Anasuri, K. K. Pappula. Green HPC: Carbon-Aware Scheduling in Cloud Data Centers. IJERET 4(2), 106&ndash;114, 2023.</li>
+<li>Carbon-Aware Mapping and Scheduling for Deadline-Constrained Workflows. arXiv:2605.27652.</li>
+<li>Carbon emission-aware job scheduling for Kubernetes deployments. The Journal of Supercomputing, 2023.</li>
+<li>Zhao et al. PCAPS: Carbon- and Precedence-Aware Scheduling for Data Processing Clusters. arXiv:2502.09717.</li>
+<li>Carbon-aware scheduling and distributionally robust optimization for cloud systems: forecasting, battery storage, and adaptive ambiguity refinement. Journal of Cloud Computing, 2026.</li>
+<li>A. Lechowicz et al. Learning-Augmented Competitive Algorithms for Spatiotemporal Online Allocation with Deadline Constraints. arXiv:2408.07831.</li>
+<li>A Systematic Evaluation of the Potential of Carbon-Aware Execution for Scientific Workflows. arXiv:2508.14625.</li>
+<li>A. Radovanovi&#263; et al. Carbon-Aware Computing for Datacenters. IEEE Transactions on Power Systems, 2023.</li>
+<li>W. A. Hanafy, Q. Liang, N. Bashir, D. Irwin, P. Shenoy. CarbonScaler: Leveraging Cloud Workload Elasticity for Optimizing Carbon-Efficiency. Proc. ACM Meas. Anal. Comput. Syst. 7(3), 2023.</li>
+<li>M. Chadha et al. GreenCourier: Carbon-Aware Scheduling for Serverless Functions. WoSC '23, 18&ndash;23, 2023.</li>
+<li>P. Wiesner, I. Behnke, D. Scheinert, K. Gontarska, L. Thamsen. Let's Wait Awhile: How Temporal Workload Shifting Can Reduce Carbon Emissions in the Cloud. Middleware '21, 260&ndash;272, 2021.</li>
+<li>V. Gsteiger, P. H. Long, Y. Sun, P. Javanrood, M. Shahrad. Caribou: Fine-Grained Geospatial Shifting of Serverless Applications for Sustainability. SOSP '24, 403&ndash;420, 2024.</li>
+<li>A. Souza et al. Ecovisor: A Virtual Energy System for Carbon-Efficient Applications. ASPLOS '23, 252&ndash;265, 2023.</li>
+<li>Z. Zhou et al. Carbon-Aware Load Balancing for Geo-Distributed Cloud Services. IEEE MASCOTS, 2013.</li>
+</ol>
+<p class="small"><b>Data sources:</b> Energy-Charts public API, Fraunhofer ISE (api.energy-charts.info); National Grid ESO Carbon Intensity API (carbonintensity.org.uk); IPCC AR5 WG3 Annex III lifecycle emission factors; Central Electricity Authority (India) CO<sub>2</sub> Baseline Database.</p>
+
+<h2>Appendix A: Reproducing the Results</h2>
+<pre>.\greenops_env\Scripts\Activate.ps1
+python -m unittest discover -s tests -v          # 34 tests
+python data/fetch_carbon_traces.py                # optional: rebuild traces
+python -m experiments.comparison.run_all         # Table 4.2
+python -m experiments.evaluation                  # E1-E7  -> results/evaluation/*.csv
+python -m experiments.plots                       # figures -> results/figures/*.png
+python -m experiments.run_experiment             # verbose single run (100 jobs)</pre>
+
+</body>
+</html>

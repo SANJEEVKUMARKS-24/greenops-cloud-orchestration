@@ -1,21 +1,31 @@
+import math
+
 from schedulers.base import Scheduler
 
 
 class TemporalGreenScheduler(Scheduler):
+    """
+    Carbon-greedy spatio-temporal baseline.
+
+    Strict jobs run now in the greenest available region.
+    Deferrable jobs pick the (region, start hour) with the lowest
+    FORECAST carbon intensity within `max_wait` hours, as long as
+    the deadline can still be met. Cost and SLA risk are ignored,
+    the forecast is trusted blindly and the decision is never
+    re-evaluated.
+    """
+
+    name = "Temporal Green"
 
     def __init__(self, max_wait=6):
         self.max_wait = max_wait
 
     def decide(self, job, candidate_regions, current_time):
 
-        available_regions = [
-            region
-            for region in candidate_regions
-            if region.can_run(job)
-        ]
-
-        if not available_regions:
-            return None
+        available_regions = self.available_regions(
+            job,
+            candidate_regions
+        )
 
         # --------------------------------
         # Strict workload
@@ -23,20 +33,28 @@ class TemporalGreenScheduler(Scheduler):
 
         if job.flexibility == "strict":
 
+            if not available_regions:
+                return None
+
             best_region = min(
                 available_regions,
                 key=lambda region:
-                region.get_carbon_intensity(current_time)
+                self.current_intensity(region, current_time)
             )
 
             return best_region
+
+        eligible_regions = self.eligible_regions(
+            job,
+            candidate_regions
+        )
 
         # --------------------------------
         # Latest time at which the job
         # can start without violating SLA
         # --------------------------------
 
-        latest_start = job.deadline - job.runtime
+        latest_start = job.latest_start
 
         # --------------------------------
         # Search window
@@ -47,8 +65,31 @@ class TemporalGreenScheduler(Scheduler):
             latest_start
         )
 
+        # Deadline can no longer be met:
+        # run as soon as possible.
         if search_until < current_time:
-            return None
+
+            if not available_regions:
+                return None
+
+            return min(
+                available_regions,
+                key=lambda region:
+                self.current_intensity(region, current_time)
+            )
+
+        # --------------------------------
+        # Candidate start times:
+        # now + every following full hour
+        # --------------------------------
+
+        start_times = [current_time]
+
+        hour = math.floor(current_time) + 1
+
+        while hour <= search_until:
+            start_times.append(hour)
+            hour += 1
 
         # --------------------------------
         # Find best region/time
@@ -58,20 +99,22 @@ class TemporalGreenScheduler(Scheduler):
         best_time = current_time
         best_carbon = float("inf")
 
-        for region in available_regions:
+        for region in eligible_regions:
 
-            for future_time in range(
-                int(current_time),
-                int(search_until) + 1
-            ):
+            for future_time in start_times:
 
-                # Make sure the job finishes
-                # before its deadline.
-                if future_time + job.runtime > job.deadline:
+                # Only "now" requires free capacity now.
+                if (
+                    future_time == current_time
+                    and not region.can_run(job)
+                ):
                     continue
 
-                carbon = region.get_carbon_intensity(
-                    future_time
+                carbon = self.intensity_signal(
+                    region,
+                    current_time,
+                    future_time,
+                    job.runtime
                 )
 
                 if carbon is None:

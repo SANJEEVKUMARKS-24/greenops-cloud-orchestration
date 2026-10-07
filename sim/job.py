@@ -10,7 +10,8 @@ class Job:
         deadline,
         flexibility="strict",
         max_cost=None,
-        carbon_priority=0.5
+        carbon_priority=0.5,
+        allowed_regions=None
     ):
 
         self.job_id = job_id
@@ -23,6 +24,7 @@ class Job:
         self.runtime = runtime
         self.deadline = deadline
 
+        # strict | batch | flexible
         self.flexibility = flexibility
 
         # Maximum amount the customer is willing
@@ -37,6 +39,16 @@ class Job:
         # 1.0 = maximum carbon priority
         self.carbon_priority = carbon_priority
 
+        # Data-locality / data-sovereignty constraint.
+        #
+        # None = the job may run in any region.
+        # Otherwise a collection of region names.
+        self.allowed_regions = (
+            None
+            if not allowed_regions
+            else frozenset(allowed_regions)
+        )
+
         # --------------------------------
         # Scheduling information
         # --------------------------------
@@ -44,6 +56,14 @@ class Job:
         self.start_time = None
         self.finish_time = None
         self.assigned_region = None
+
+        # completed | rejected
+        self.status = None
+        self.reject_reason = None
+
+        # How many times the scheduler was consulted
+        # (initial decision + re-planning + retries).
+        self.decisions = 0
 
         # --------------------------------
         # Metrics
@@ -53,7 +73,46 @@ class Job:
 
         self.energy_consumed = 0
         self.carbon_emitted = 0
+        self.carbon_intensity = 0
         self.cost = 0
+
+    # ==================================================
+    # DERIVED PROPERTIES
+    # ==================================================
+
+    @property
+    def latest_start(self):
+
+        return self.deadline - self.runtime
+
+    @property
+    def slack(self):
+        """Total scheduling slack at arrival (hours)."""
+
+        return max(
+            0.0,
+            self.deadline
+            - self.arrival_time
+            - self.runtime
+        )
+
+    @property
+    def tardiness(self):
+
+        if self.finish_time is None:
+            return 0.0
+
+        return max(
+            0.0,
+            self.finish_time - self.deadline
+        )
+
+    def is_allowed_in(self, region):
+
+        return (
+            self.allowed_regions is None
+            or region.name in self.allowed_regions
+        )
 
     def __repr__(self):
 

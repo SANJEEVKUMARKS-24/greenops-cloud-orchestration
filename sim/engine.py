@@ -2,12 +2,39 @@ import simpy
 
 
 class CloudSimulator:
+    """
+    Discrete-event simulation of a multi-region cloud.
+
+    Life cycle of a job
+    -------------------
+    1. ARRIVAL      the job enters the system at `arrival_time`.
+    2. ADMISSION    if no region can EVER host it (locality, size or
+                    budget) it is rejected and recorded.
+    3. DECISION     the scheduler returns either
+                        region                     -> run now
+                        (region, start_time)       -> temporal shift
+                        None                       -> nothing free now
+    4. QUEUEING     if nothing is free the job waits for the next
+                    resource release (or `retry_interval`) and asks
+                    again - jobs are never silently dropped.
+    5. DEFERRAL     a temporally shifted job sleeps until its start
+                    time. Schedulers with `replan_interval` are
+                    re-consulted every interval with a fresher
+                    forecast ("wait vs run now" re-evaluation).
+    6. EXECUTION    resources are allocated; energy, carbon (averaged
+                    over the whole run window using the ACTUAL trace)
+                    and cost are computed; resources are released.
+    7. METRICS      completion, latency and SLA tardiness are recorded.
+    """
 
     def __init__(
         self,
         regions,
         scheduler,
-        metrics
+        metrics,
+        forecaster=None,
+        verbose=True,
+        retry_interval=0.25
     ):
 
         self.env = simpy.Environment()
@@ -18,6 +45,26 @@ class CloudSimulator:
 
         self.metrics = metrics
 
+        self.forecaster = forecaster
+
+        self.verbose = verbose
+
+        self.retry_interval = retry_interval
+
+        self._release_event = self.env.event()
+
+        if hasattr(self.scheduler, "bind"):
+            self.scheduler.bind(regions, forecaster)
+
+    # ==================================================
+    # LOGGING
+    # ==================================================
+
+    def log(self, message):
+
+        if self.verbose:
+            print(f"[{self.env.now:6.2f}] {message}")
+
     # ==================================================
     # SUBMIT JOB
     # ==================================================
@@ -27,6 +74,49 @@ class CloudSimulator:
         self.env.process(
             self.process_job(job)
         )
+
+    # ==================================================
+    # RESOURCE RELEASE NOTIFICATION
+    # ==================================================
+
+    def _notify_release(self):
+
+        event = self._release_event
+
+        self._release_event = self.env.event()
+
+        event.succeed()
+
+    def _wait_for_resources(self):
+
+        return (
+            self._release_event
+            | self.env.timeout(self.retry_interval)
+        )
+
+    # ==================================================
+    # ADMISSION CONTROL
+    # ==================================================
+
+    def _admissible(self, job):
+
+        for region in self.regions:
+
+            if not job.is_allowed_in(region):
+                continue
+
+            if not region.fits(job):
+                continue
+
+            if (
+                job.max_cost is not None
+                and region.calculate_cost(job) > job.max_cost
+            ):
+                continue
+
+            return True
+
+        return False
 
     # ==================================================
     # PROCESS JOB
@@ -49,267 +139,153 @@ class CloudSimulator:
                 arrival_wait
             )
 
-        print(
-            f"[{self.env.now:.1f}] "
-            f"Job {job.job_id} arrived"
-        )
+        self.log(f"Job {job.job_id} arrived ({job.flexibility})")
 
         # ==============================================
-        # ASK SCHEDULER
+        # ADMISSION
         # ==============================================
 
-        decision = self.scheduler.decide(
-            job,
-            self.regions,
-            self.env.now
-        )
+        if not self._admissible(job):
 
-        # ==============================================
-        # NO FEASIBLE DECISION
-        # ==============================================
+            job.status = "rejected"
+            job.reject_reason = "no region satisfies locality/size/budget"
 
-        if decision is None:
+            self.log(f"Job {job.job_id} REJECTED: {job.reject_reason}")
 
-            print(
-                f"[{self.env.now:.1f}] "
-                f"No feasible region for "
-                f"{job.job_id}"
-            )
+            self.metrics.record(job)
 
             return
 
         # ==============================================
-        # NORMAL SCHEDULER
-        #
-        # Returns:
-        #
-        #     region
-        #
+        # DECISION LOOP
         # ==============================================
 
-        if not isinstance(
-            decision,
-            tuple
-        ):
+        while True:
 
-            region = decision
-
-            scheduled_time = (
+            decision = self.scheduler.decide(
+                job,
+                self.regions,
                 self.env.now
             )
 
-        # ==============================================
-        # TEMPORAL SCHEDULER
-        #
-        # Returns:
-        #
-        #     region, scheduled_time
-        #
-        # ==============================================
+            job.decisions += 1
 
-        else:
+            # ------------------------------------------
+            # Nothing free right now -> queue
+            # ------------------------------------------
 
-            region, scheduled_time = (
-                decision
+            if decision is None:
+
+                self.log(f"Job {job.job_id} queued (no capacity)")
+
+                yield self._wait_for_resources()
+
+                continue
+
+            # ------------------------------------------
+            # NORMAL SCHEDULER returns: region
+            # TEMPORAL SCHEDULER returns: region, time
+            # ------------------------------------------
+
+            if isinstance(decision, tuple):
+
+                region, scheduled_time = decision
+
+            else:
+
+                region = decision
+
+                scheduled_time = self.env.now
+
+            # ------------------------------------------
+            # Temporal shift
+            # ------------------------------------------
+
+            wait_time = scheduled_time - self.env.now
+
+            if wait_time > 1e-9:
+
+                replan = getattr(
+                    self.scheduler,
+                    "replan_interval",
+                    None
+                )
+
+                if replan and wait_time > replan:
+
+                    self.log(
+                        f"Job {job.job_id} deferred towards "
+                        f"{region.name} @ {scheduled_time:.1f} "
+                        f"(re-plan in {replan}h)"
+                    )
+
+                    yield self.env.timeout(replan)
+
+                    continue
+
+                self.log(
+                    f"Job {job.job_id} waiting until "
+                    f"{scheduled_time:.1f} for {region.name}"
+                )
+
+                yield self.env.timeout(wait_time)
+
+            # ------------------------------------------
+            # Capacity may have been taken while waiting
+            # ------------------------------------------
+
+            if region.can_run(job):
+                break
+
+            self.log(
+                f"Region {region.name} cannot run {job.job_id} "
+                f"now - re-deciding"
             )
 
-        # ==============================================
-        # WAIT FOR SELECTED EXECUTION TIME
-        # ==============================================
+            if wait_time <= 1e-9:
 
-        wait_time = (
-            scheduled_time
-            - self.env.now
-        )
-
-        if wait_time > 0:
-
-            print(
-                f"[{self.env.now:.1f}] "
-                f"Job {job.job_id} waiting "
-                f"until "
-                f"{scheduled_time:.1f}"
-            )
-
-            yield self.env.timeout(
-                wait_time
-            )
-
-        # ==============================================
-        # FINAL RESOURCE CHECK
-        # ==============================================
-
-        if not region.can_run(job):
-
-            print(
-                f"[{self.env.now:.1f}] "
-                f"Region {region.name} "
-                f"cannot run "
-                f"{job.job_id}"
-            )
-
-            return
-
-        # ==============================================
-        # FINAL SLA CHECK
-        # ==============================================
-
-        if (
-            self.env.now
-            + job.runtime
-            >
-            job.deadline
-        ):
-
-            job.sla_violated = True
-
-            print(
-                f"[{self.env.now:.1f}] "
-                f"Job {job.job_id} "
-                f"would violate SLA"
-            )
-
-            return
-
-        # ==============================================
-        # FINAL COST CHECK
-        # ==============================================
-
-        estimated_cost = (
-            job.cpu_required
-            * job.runtime
-            * region.cost_per_cpu_hour
-        )
-
-        if (
-            job.max_cost is not None
-            and estimated_cost
-            > job.max_cost
-        ):
-
-            print(
-                f"[{self.env.now:.1f}] "
-                f"Job {job.job_id} exceeds "
-                f"budget in "
-                f"{region.name}"
-            )
-
-            return
+                yield self._wait_for_resources()
 
         # ==============================================
         # ALLOCATE RESOURCES
         # ==============================================
 
-        allocated = region.allocate(
-            job
-        )
+        region.allocate(job)
 
-        if not allocated:
+        job.assigned_region = region
 
-            print(
-                f"[{self.env.now:.1f}] "
-                f"Failed to allocate "
-                f"resources for "
-                f"{job.job_id}"
-            )
-
-            return
+        job.start_time = self.env.now
 
         # ==============================================
-        # RECORD START
-        # ==============================================
-
-        job.assigned_region = (
-            region
-        )
-
-        job.start_time = (
-            self.env.now
-        )
-
-        # ==============================================
-        # CARBON INTENSITY
-        # ==============================================
-
-        carbon_intensity = (
-            region.get_carbon_intensity(
-                job.start_time
-            )
-        )
-
-        if carbon_intensity is None:
-
-            print(
-                f"ERROR: No carbon data for "
-                f"{region.name} at "
-                f"hour "
-                f"{int(job.start_time) % 24}"
-            )
-
-            region.release(job)
-
-            return
-
-        # ==============================================
-        # ENERGY CALCULATION
+        # ENERGY, CARBON AND COST
         #
-        # NEW MODEL
-        #
-        # Energy depends on:
-        #     Region power characteristics
-        #     CPU requirement
-        #     Runtime
+        # Carbon uses the ACTUAL intensity averaged over
+        # the whole execution window - not the forecast
+        # the scheduler used to make its decision.
         # ==============================================
 
-        job.energy_consumed = (
-            region.calculate_energy(
-                job.runtime,
-                job.cpu_required
-            )
+        job.energy_consumed = region.calculate_energy(
+            job.runtime,
+            job.cpu_required
         )
 
-        # ==============================================
-        # CARBON CALCULATION
-        # ==============================================
+        job.carbon_intensity = region.average_carbon_intensity(
+            job.start_time,
+            job.runtime
+        )
 
         job.carbon_emitted = (
             job.energy_consumed
-            *
-            carbon_intensity
+            * job.carbon_intensity
         )
 
-        # ==============================================
-        # COST
-        # ==============================================
+        job.cost = region.calculate_cost(job)
 
-        job.cost = (
-            estimated_cost
-        )
-
-        # ==============================================
-        # PRINT EXECUTION INFORMATION
-        # ==============================================
-
-        print(
-            f"[{self.env.now:.1f}] "
-            f"Job {job.job_id} → "
-            f"{region.name}"
-        )
-
-        print(
-            f"           Carbon intensity: "
-            f"{carbon_intensity} "
-            f"gCO₂/kWh"
-        )
-
-        print(
-            f"           Energy: "
-            f"{job.energy_consumed:.4f} "
-            f"kWh"
-        )
-
-        print(
-            f"           Estimated cost: "
+        self.log(
+            f"Job {job.job_id} -> {region.name}  "
+            f"CI={job.carbon_intensity:.1f} gCO2/kWh  "
+            f"E={job.energy_consumed:.3f} kWh  "
+            f"C={job.carbon_emitted:.1f} g  "
             f"${job.cost:.2f}"
         )
 
@@ -322,59 +298,32 @@ class CloudSimulator:
         )
 
         # ==============================================
-        # RECORD FINISH
+        # RECORD FINISH + SLA VALIDATION
         # ==============================================
 
-        job.finish_time = (
-            self.env.now
+        job.finish_time = self.env.now
+
+        job.sla_violated = (
+            job.finish_time > job.deadline + 1e-9
         )
 
-        # ==============================================
-        # SLA VALIDATION
-        # ==============================================
+        job.status = "completed"
 
-        if (
-            job.finish_time
-            >
-            job.deadline
-        ):
+        region.release(job)
 
-            job.sla_violated = True
+        self._notify_release()
 
-        else:
+        self.metrics.record(job)
 
-            job.sla_violated = False
-
-        # ==============================================
-        # RELEASE RESOURCES
-        # ==============================================
-
-        region.release(
-            job
-        )
-
-        # ==============================================
-        # RECORD METRICS
-        # ==============================================
-
-        self.metrics.record(
-            job
-        )
-
-        # ==============================================
-        # COMPLETION MESSAGE
-        # ==============================================
-
-        print(
-            f"[{self.env.now:.1f}] "
-            f"Job {job.job_id} completed "
-            f"in {region.name}"
+        self.log(
+            f"Job {job.job_id} completed in {region.name}"
+            + ("  ** SLA VIOLATED **" if job.sla_violated else "")
         )
 
     # ==================================================
     # RUN SIMULATION
     # ==================================================
 
-    def run(self):
+    def run(self, until=None):
 
-        self.env.run()
+        self.env.run(until=until)
