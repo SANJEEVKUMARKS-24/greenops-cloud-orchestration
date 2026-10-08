@@ -1,5 +1,7 @@
 import simpy
 
+from schedulers.base import WAIT
+
 
 class CloudSimulator:
     """
@@ -13,6 +15,7 @@ class CloudSimulator:
     3. DECISION     the scheduler returns either
                         region                     -> run now
                         (region, start_time)       -> temporal shift
+                        (WAIT, time)               -> re-decide at time
                         None                       -> nothing free now
     4. QUEUEING     if nothing is free the job waits for the next
                     resource release (or `retry_interval`) and asks
@@ -33,6 +36,7 @@ class CloudSimulator:
         scheduler,
         metrics,
         forecaster=None,
+        network=None,
         verbose=True,
         retry_interval=0.25
     ):
@@ -47,6 +51,11 @@ class CloudSimulator:
 
         self.forecaster = forecaster
 
+        self.network = network
+
+        if network is not None:
+            network.bind(regions)
+
         self.verbose = verbose
 
         self.retry_interval = retry_interval
@@ -54,7 +63,7 @@ class CloudSimulator:
         self._release_event = self.env.event()
 
         if hasattr(self.scheduler, "bind"):
-            self.scheduler.bind(regions, forecaster)
+            self.scheduler.bind(regions, forecaster, network)
 
     # ==================================================
     # LOGGING
@@ -95,6 +104,19 @@ class CloudSimulator:
         )
 
     # ==================================================
+    # COST INCLUDING DATA EGRESS
+    # ==================================================
+
+    def _total_cost(self, job, region):
+
+        cost = region.calculate_cost(job)
+
+        if self.network is not None:
+            cost += self.network.transfer_cost(job, region)
+
+        return cost
+
+    # ==================================================
     # ADMISSION CONTROL
     # ==================================================
 
@@ -110,7 +132,7 @@ class CloudSimulator:
 
             if (
                 job.max_cost is not None
-                and region.calculate_cost(job) > job.max_cost
+                and self._total_cost(job, region) > job.max_cost
             ):
                 continue
 
@@ -179,6 +201,18 @@ class CloudSimulator:
                 self.log(f"Job {job.job_id} queued (no capacity)")
 
                 yield self._wait_for_resources()
+
+                continue
+
+            # ------------------------------------------
+            # Explicit "wait and ask me again"
+            # ------------------------------------------
+
+            if isinstance(decision, tuple) and decision[0] is WAIT:
+
+                yield self.env.timeout(
+                    max(decision[1] - self.env.now, 1e-6)
+                )
 
                 continue
 
@@ -264,22 +298,39 @@ class CloudSimulator:
         # the scheduler used to make its decision.
         # ==============================================
 
+        # ----------------------------------------------
+        # Data transfer (only outside the home region).
+        # Resources are held while the input is staged.
+        # ----------------------------------------------
+
+        if self.network is not None:
+
+            job.transfer_hours = self.network.transfer_hours(job, region)
+            job.transfer_energy = self.network.transfer_energy(job, region)
+            job.transfer_carbon = self.network.transfer_carbon(
+                job, region, job.start_time
+            )
+            job.transfer_cost = self.network.transfer_cost(job, region)
+
+        compute_start = job.start_time + job.transfer_hours
+
         job.energy_consumed = region.calculate_energy(
             job.runtime,
             job.cpu_required
         )
 
         job.carbon_intensity = region.average_carbon_intensity(
-            job.start_time,
+            compute_start,
             job.runtime
         )
 
         job.carbon_emitted = (
             job.energy_consumed
             * job.carbon_intensity
+            + job.transfer_carbon
         )
 
-        job.cost = region.calculate_cost(job)
+        job.cost = region.calculate_cost(job) + job.transfer_cost
 
         self.log(
             f"Job {job.job_id} -> {region.name}  "
@@ -294,7 +345,7 @@ class CloudSimulator:
         # ==============================================
 
         yield self.env.timeout(
-            job.runtime
+            job.transfer_hours + job.runtime
         )
 
         # ==============================================

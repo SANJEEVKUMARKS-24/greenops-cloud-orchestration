@@ -5,8 +5,8 @@ class CostOnlyScheduler(Scheduler):
     """
     Purely economic baseline.
 
-    Always runs immediately in the cheapest region that can
-    host the job right now.
+    Always runs immediately in the region with the lowest total
+    cost (compute + data egress) that can host the job right now.
     """
 
     name = "Cost Only"
@@ -23,7 +23,7 @@ class CostOnlyScheduler(Scheduler):
 
         region = min(
             available_regions,
-            key=lambda r: r.cost_per_cpu_hour
+            key=lambda r: self.total_cost(job, r)
         )
 
         return region

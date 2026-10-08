@@ -50,11 +50,17 @@ class TemporalGreenScheduler(Scheduler):
         )
 
         # --------------------------------
-        # Latest time at which the job
-        # can start without violating SLA
+        # Latest time at which the job can
+        # start anywhere without violating SLA
         # --------------------------------
 
-        latest_start = job.latest_start
+        if not eligible_regions:
+            return None
+
+        latest_start = max(
+            self.latest_start_in(job, region)
+            for region in eligible_regions
+        )
 
         # --------------------------------
         # Search window
@@ -93,6 +99,8 @@ class TemporalGreenScheduler(Scheduler):
 
         # --------------------------------
         # Find best region/time
+        # (carbon intensity only - data
+        #  transfer and cost are ignored)
         # --------------------------------
 
         best_region = None
@@ -101,7 +109,12 @@ class TemporalGreenScheduler(Scheduler):
 
         for region in eligible_regions:
 
+            region_latest = self.latest_start_in(job, region)
+
             for future_time in start_times:
+
+                if future_time > region_latest + 1e-9:
+                    continue
 
                 # Only "now" requires free capacity now.
                 if (
@@ -127,6 +140,16 @@ class TemporalGreenScheduler(Scheduler):
                     best_time = future_time
 
         if best_region is None:
-            return None
+
+            # Nothing feasible in the window (e.g. every region
+            # is full now): fall back to the greenest free region.
+            if not available_regions:
+                return None
+
+            return min(
+                available_regions,
+                key=lambda region:
+                self.current_intensity(region, current_time)
+            )
 
         return best_region, best_time

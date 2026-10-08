@@ -1,0 +1,218 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 790" width="1400" height="790" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6470"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2a78d6"/>
+    </marker>
+    <style>
+      .box   { fill:#f8f9fb; stroke:#d3d7dd; stroke-width:1.2; }
+      .h     { font-size:14px; font-weight:600; fill:#16191d; }
+      .t     { font-size:12px; fill:#4a5059; }
+      .tb    { font-size:12px; font-weight:600; fill:#2b3036; }
+      .cap   { font-size:10.5px; font-weight:600; fill:#7a818b; letter-spacing:.08em; }
+      .step  { fill:#ffffff; stroke:#b9cde9; stroke-width:1.2; }
+      .st    { font-size:13px; font-weight:600; fill:#16191d; }
+      .sd    { font-size:11.5px; fill:#4a5059; }
+      .flow  { fill:none; stroke:#5b6470; stroke-width:1.6; }
+      .fb    { fill:none; stroke:#2a78d6; stroke-width:1.5; stroke-dasharray:5 4; }
+      .lbl   { font-size:10.5px; fill:#5b6470; }
+      .lblb  { font-size:10.5px; fill:#2a78d6; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="790" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="46" font-size="22" font-weight="700" fill="#16191d">GreenOps Cloud Orchestration — System Architecture</text>
+  <text x="40" y="70" font-size="13" fill="#5b6470">Carbon-, cost- and SLA-aware spatio-temporal scheduling of cloud workloads</text>
+
+  <!-- Column captions -->
+  <text x="40"  y="94" class="cap">INPUTS</text>
+  <text x="400" y="94" class="cap">DECISION</text>
+  <text x="970" y="94" class="cap">EXECUTION &amp; EVALUATION</text>
+
+  <!-- ================= COLUMN A: INPUTS ================= -->
+
+  <!-- A1 Workload -->
+  <rect x="40" y="104" width="290" height="160" rx="10" class="box"/>
+  <text x="58" y="130" class="h">Workload sources</text>
+  <text x="58" y="153" class="tb">Alibaba 2018 cluster trace</text>
+  <text x="58" y="170" class="t">real arrivals · runtimes · vCPU demand</text>
+  <text x="58" y="190" class="tb">Synthetic generator</text>
+  <text x="58" y="207" class="t">strict · batch · flexible classes</text>
+  <line x1="58" y1="219" x2="312" y2="219" stroke="#e1e4e8"/>
+  <text x="58" y="236" class="t">deadline · budget · carbon priority</text>
+  <text x="58" y="253" class="t">home region · data size · residency</text>
+
+  <!-- A2 Region catalogue -->
+  <rect x="40" y="300" width="290" height="120" rx="10" class="box"/>
+  <text x="58" y="326" class="h">Region catalogue</text>
+  <text x="58" y="350" class="t">capacity · price per vCPU-hour</text>
+  <text x="58" y="370" class="t">node power (idle / peak) · PUE</text>
+  <text x="58" y="390" class="t">network: kWh per GB · egress $ per GB</text>
+  <text x="58" y="408" class="t">bandwidth between regions</text>
+
+  <!-- A3 Carbon telemetry -->
+  <rect x="40" y="455" width="290" height="120" rx="10" class="box"/>
+  <text x="58" y="481" class="h">Carbon telemetry</text>
+  <text x="58" y="504" class="t">Energy-Charts generation mix (DE, NO)</text>
+  <text x="58" y="523" class="t">National Grid ESO API (GB)</text>
+  <text x="58" y="542" class="t">CEA-calibrated model (IN)</text>
+  <text x="58" y="562" class="tb">hourly gCO₂eq/kWh · IPCC AR5 factors</text>
+
+  <!-- A4 Forecaster -->
+  <rect x="40" y="610" width="290" height="100" rx="10" class="box"/>
+  <text x="58" y="636" class="h">Carbon forecaster</text>
+  <text x="58" y="660" class="t">error σ(h) = ε·√(h / 24), AR(1) correlated</text>
+  <text x="58" y="680" class="t">ε = 0.15, calibrated on NG-ESO forecasts</text>
+  <text x="58" y="698" class="t">exact at h = 0 (measured, not forecast)</text>
+
+  <!-- ================= COLUMN B: ENGINE ================= -->
+
+  <rect x="400" y="104" width="500" height="606" rx="14" fill="#eef4fc" stroke="#2a78d6" stroke-width="1.6"/>
+  <text x="422" y="132" font-size="15" font-weight="700" fill="#1c5cab">GreenOps orchestration engine</text>
+  <text x="878" y="132" font-size="11" fill="#5b6470" text-anchor="end">per job · ≈ 0.1 ms per decision</text>
+
+  <!-- Step 1 -->
+  <rect x="430" y="150" width="440" height="70" rx="8" class="step"/>
+  <circle cx="455" cy="175" r="11" fill="#2a78d6"/><text x="455" y="179.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+  <text x="476" y="180" class="st">Admission control</text>
+  <text x="476" y="203" class="sd">reject only if no region meets residency, size and budget</text>
+
+  <!-- Step 2 -->
+  <rect x="430" y="238" width="440" height="70" rx="8" class="step"/>
+  <circle cx="455" cy="263" r="11" fill="#2a78d6"/><text x="455" y="267.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+  <text x="476" y="268" class="st">Candidate generation</text>
+  <text x="476" y="291" class="sd">every allowed region × start hour in [now, now + W]; strict: now</text>
+
+  <!-- Step 3 -->
+  <rect x="430" y="326" width="440" height="70" rx="8" class="step"/>
+  <circle cx="455" cy="351" r="11" fill="#2a78d6"/><text x="455" y="355.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+  <text x="476" y="356" class="st">Hard constraints</text>
+  <text x="476" y="379" class="sd">capacity · budget incl. egress · deadline incl. transfer time</text>
+
+  <!-- Step 4 -->
+  <rect x="430" y="414" width="440" height="70" rx="8" class="step"/>
+  <circle cx="455" cy="439" r="11" fill="#2a78d6"/><text x="455" y="443.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+  <text x="476" y="444" class="st">Objective estimation</text>
+  <text x="476" y="463" class="sd">carbon: compute + data transfer, forecast × (1 + κσ)</text>
+  <text x="476" y="478" class="sd">cost: compute + egress   ·   SLA risk: (wait / slack)²</text>
+
+  <!-- Step 5 -->
+  <rect x="430" y="502" width="440" height="70" rx="8" class="step"/>
+  <circle cx="455" cy="527" r="11" fill="#2a78d6"/><text x="455" y="531.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">5</text>
+  <text x="476" y="532" class="st">Selection</text>
+  <text x="476" y="551" class="sd">weighted sum, w = 0.6 / 0.2 / 0.2 (default)</text>
+  <text x="476" y="566" class="sd">or Pareto front + weighted Tchebycheff knee point</text>
+
+  <!-- Step 6 -->
+  <rect x="430" y="590" width="440" height="70" rx="8" class="step"/>
+  <circle cx="455" cy="615" r="11" fill="#2a78d6"/><text x="455" y="619.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">6</text>
+  <text x="476" y="620" class="st">Dispatch</text>
+  <text x="476" y="643" class="sd">run now  ·  defer and re-plan hourly  ·  queue until capacity frees</text>
+
+  <!-- Step arrows -->
+  <path class="flow" d="M650,220 V236" marker-end="url(#arrow)"/>
+  <path class="flow" d="M650,308 V324" marker-end="url(#arrow)"/>
+  <path class="flow" d="M650,396 V412" marker-end="url(#arrow)"/>
+  <path class="flow" d="M650,484 V500" marker-end="url(#arrow)"/>
+  <path class="flow" d="M650,572 V588" marker-end="url(#arrow)"/>
+
+  <!-- Re-plan loop (inside engine, right margin) -->
+  <path class="fb" d="M870,604 H879 V273 H872" marker-end="url(#arrow-blue)"/>
+  <text x="891" y="440" class="lblb" transform="rotate(90 891 440)" text-anchor="middle">re-plan with fresher forecast</text>
+
+  <text x="422" y="690" font-size="11" fill="#5b6470">Deferred jobs re-enter step 2 hourly · late options used only if nothing meets the deadline</text>
+
+  <!-- ================= COLUMN C ================= -->
+
+  <!-- C1 Multi-region cloud -->
+  <rect x="970" y="104" width="390" height="226" rx="10" class="box"/>
+  <text x="988" y="130" class="h">Multi-region cloud</text>
+  <text x="1342" y="130" font-size="11" fill="#5b6470" text-anchor="end">1,280 vCPU per region</text>
+
+  <rect x="988" y="146" width="112" height="112" rx="8" fill="#e8f6f0" stroke="#1baf7a" stroke-width="1.2"/>
+  <text x="1044" y="168" font-size="13" font-weight="700" fill="#16191d" text-anchor="middle">India</text>
+  <text x="1044" y="187" class="t" text-anchor="middle">coal-heavy</text>
+  <text x="1044" y="205" class="t" text-anchor="middle">≈ 700 g/kWh</text>
+  <text x="1044" y="225" class="t" text-anchor="middle">$0.08 / vCPU-h</text>
+  <text x="1044" y="243" class="t" text-anchor="middle">PUE 1.60</text>
+
+  <rect x="1109" y="146" width="112" height="112" rx="8" fill="#fdeee7" stroke="#eb6834" stroke-width="1.2"/>
+  <text x="1165" y="168" font-size="13" font-weight="700" fill="#16191d" text-anchor="middle">Germany</text>
+  <text x="1165" y="187" class="t" text-anchor="middle">wind / solar mix</text>
+  <text x="1165" y="205" class="t" text-anchor="middle">130–650 g/kWh</text>
+  <text x="1165" y="225" class="t" text-anchor="middle">$0.11 / vCPU-h</text>
+  <text x="1165" y="243" class="t" text-anchor="middle">PUE 1.30</text>
+
+  <rect x="1230" y="146" width="112" height="112" rx="8" fill="#e9f1fb" stroke="#2a78d6" stroke-width="1.2"/>
+  <text x="1286" y="168" font-size="13" font-weight="700" fill="#16191d" text-anchor="middle">Norway</text>
+  <text x="1286" y="187" class="t" text-anchor="middle">hydro</text>
+  <text x="1286" y="205" class="t" text-anchor="middle">≈ 30 g/kWh</text>
+  <text x="1286" y="225" class="t" text-anchor="middle">$0.14 / vCPU-h</text>
+  <text x="1286" y="243" class="t" text-anchor="middle">PUE 1.15</text>
+
+  <!-- WAN -->
+  <path d="M1044,258 V278 H1286 V258" fill="none" stroke="#8a929c" stroke-width="1.3" stroke-dasharray="3 3"/>
+  <path d="M1165,258 V278" fill="none" stroke="#8a929c" stroke-width="1.3" stroke-dasharray="3 3"/>
+  <text x="1165" y="300" class="t" text-anchor="middle">WAN data transfer when a job leaves its home region</text>
+  <text x="1165" y="318" class="lbl" text-anchor="middle">0.005 kWh/GB · $0.02/GB · 1 Gbit/s</text>
+
+  <!-- C2 Execution -->
+  <rect x="970" y="365" width="390" height="100" rx="10" class="box"/>
+  <text x="988" y="391" class="h">Execution engine (SimPy)</text>
+  <text x="988" y="415" class="t">allocate → stage input data → run → release</text>
+  <text x="988" y="435" class="t">carbon = energy × ACTUAL intensity over run window</text>
+  <text x="988" y="453" class="t">late jobs run and are recorded with tardiness</text>
+
+  <!-- C3 Metrics -->
+  <rect x="970" y="500" width="390" height="90" rx="10" class="box"/>
+  <text x="988" y="526" class="h">Metrics collector</text>
+  <text x="988" y="550" class="t">carbon (compute + network) · energy · cost</text>
+  <text x="988" y="570" class="t">SLA violations · tardiness · latency p95 / p99</text>
+
+  <!-- C4 Evaluation -->
+  <rect x="970" y="625" width="390" height="85" rx="10" class="box"/>
+  <text x="988" y="651" class="h">Evaluation harness</text>
+  <text x="988" y="675" class="t">8 baselines incl. Wait Awhile, Online Threshold</text>
+  <text x="988" y="695" class="t">multi-seed · permutation tests · Pareto / hypervolume</text>
+
+  <!-- ================= CONNECTORS ================= -->
+
+  <!-- A1 -> step 1 -->
+  <path class="flow" d="M330,185 H428" marker-end="url(#arrow)"/>
+  <text x="379" y="177" class="lbl" text-anchor="middle">jobs</text>
+
+  <!-- A2 -> step 3 -->
+  <path class="flow" d="M330,361 H428" marker-end="url(#arrow)"/>
+  <text x="379" y="353" class="lbl" text-anchor="middle">limits</text>
+
+  <!-- A3 -> A4 -->
+  <path class="flow" d="M185,575 V608" marker-end="url(#arrow)"/>
+
+  <!-- A4 -> step 4 -->
+  <path class="flow" d="M330,660 H372 V449 H428" marker-end="url(#arrow)"/>
+  <text x="379" y="441" class="lbl" text-anchor="middle">forecast</text>
+
+  <!-- step 6 -> cloud -->
+  <path class="flow" d="M870,636 H935 V215 H968" marker-end="url(#arrow)"/>
+  <text x="947" y="430" class="lbl" transform="rotate(-90 947 430)" text-anchor="middle">region + start time</text>
+
+  <!-- cloud capacity feedback -> engine -->
+  <path class="fb" d="M968,150 H902" marker-end="url(#arrow-blue)"/>
+  <text x="935" y="142" class="lblb" text-anchor="middle">capacity</text>
+
+  <!-- Column C chain -->
+  <path class="flow" d="M1165,330 V363" marker-end="url(#arrow)"/>
+  <path class="flow" d="M1165,465 V498" marker-end="url(#arrow)"/>
+  <path class="flow" d="M1165,590 V623" marker-end="url(#arrow)"/>
+
+  <!-- ================= LEGEND ================= -->
+  <line x1="40" y1="748" x2="72" y2="748" stroke="#5b6470" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="80" y="752" class="lbl">data / control flow</text>
+  <line x1="210" y1="748" x2="242" y2="748" stroke="#2a78d6" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-blue)"/>
+  <text x="250" y="752" class="lbl">feedback loop</text>
+  <text x="1360" y="752" class="lbl" text-anchor="end">W = 12 h deferral window · κ = 0.5 confidence gate · strict jobs never deferred</text>
+</svg>

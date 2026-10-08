@@ -18,9 +18,10 @@ class CarbonAwareMOOScheduler(Scheduler):
         strict jobs   s = now  (no temporal shifting)
 
     Objectives (all minimised)
-        C(x)  forecast carbon  = E_r * CI_forecast(r, s..s+runtime)
+        C(x)  forecast carbon  = (E_r * CI_forecast(r, s..s+runtime)
+                                  + data-transfer carbon)
               risk-adjusted    * (1 + kappa * sigma(s - now))
-        K(x)  cost             = cpu * runtime * price_r
+        K(x)  cost             = cpu * runtime * price_r + egress
         R(x)  SLA risk         = ((s - now) / (latest_start - now)) ** q
               = fraction of the remaining slack consumed by waiting,
               made convex (q = 2) so that waiting is cheap while
@@ -54,6 +55,7 @@ class CarbonAwareMOOScheduler(Scheduler):
         replan_interval=1.0,
         normalization="max",
         risk_exponent=2.0,
+        transfer_aware=True,
         verbose=False
     ):
         self.carbon_weight = carbon_weight
@@ -72,7 +74,20 @@ class CarbonAwareMOOScheduler(Scheduler):
         self.replan_interval = replan_interval
         self.normalization = normalization
         self.risk_exponent = risk_exponent
+        self.transfer_aware = transfer_aware
         self.verbose = verbose
+
+    # ==================================================
+    # BINDING (ablation: ignore data-transfer costs)
+    # ==================================================
+
+    def bind(self, regions, forecaster=None, network=None):
+
+        super().bind(
+            regions,
+            forecaster,
+            network if self.transfer_aware else None
+        )
 
     # ==================================================
     # ENERGY MODEL
@@ -93,7 +108,7 @@ class CarbonAwareMOOScheduler(Scheduler):
 
     def calculate_cost(self, job, region):
 
-        return region.calculate_cost(job)
+        return self.total_cost(job, region)
 
     # ==================================================
     # CARBON MODEL
@@ -110,21 +125,11 @@ class CarbonAwareMOOScheduler(Scheduler):
         if current_time is None:
             current_time = start_time
 
-        carbon_intensity = self.intensity_signal(
+        return self.estimated_carbon(
+            job,
             region,
             current_time,
-            start_time,
-            job.runtime
-        )
-
-        if carbon_intensity is None:
-            return None
-
-        energy = self.calculate_energy(job, region)
-
-        return (
-            energy *
-            carbon_intensity
+            start_time
         )
 
     def forecast_sigma(self, horizon):
@@ -167,14 +172,17 @@ class CarbonAwareMOOScheduler(Scheduler):
     # CANDIDATE START TIMES
     # ==================================================
 
-    def start_times(self, job, current_time):
+    def start_times(self, job, current_time, latest_start=None):
 
         if job.flexibility == "strict":
             return [current_time]
 
+        if latest_start is None:
+            latest_start = job.latest_start
+
         search_until = min(
             current_time + self.max_wait,
-            job.latest_start
+            latest_start
         )
 
         times = [current_time]
@@ -206,11 +214,6 @@ class CarbonAwareMOOScheduler(Scheduler):
 
         remaining_slack = job.latest_start - current_time
 
-        start_times = self.start_times(
-            job,
-            current_time
-        )
-
         # ----------------------------------------------
         # Spatial dimension: every eligible region
         # (locality + size + budget already enforced)
@@ -224,6 +227,12 @@ class CarbonAwareMOOScheduler(Scheduler):
             cost = self.calculate_cost(
                 job,
                 region
+            )
+
+            start_times = self.start_times(
+                job,
+                current_time,
+                self.latest_start_in(job, region)
             )
 
             # ------------------------------------------
@@ -243,7 +252,11 @@ class CarbonAwareMOOScheduler(Scheduler):
                 ):
                     continue
 
-                finish_time = start_time + job.runtime
+                finish_time = (
+                    start_time
+                    + self.transfer_hours(job, region)
+                    + job.runtime
+                )
 
                 # --------------------------------------
                 # HARD SLA CONSTRAINT
@@ -295,7 +308,18 @@ class CarbonAwareMOOScheduler(Scheduler):
                     }
                 )
 
-        return candidates
+        # ----------------------------------------------
+        # Late "run now" options are only a best-effort
+        # fallback: drop them whenever some candidate
+        # still meets the deadline.
+        # ----------------------------------------------
+
+        on_time = [
+            c for c in candidates
+            if c["finish_time"] <= job.deadline + 1e-9
+        ]
+
+        return on_time or candidates
 
     # ==================================================
     # SCORE CANDIDATES (weighted sum)

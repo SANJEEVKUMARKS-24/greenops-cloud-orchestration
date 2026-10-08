@@ -9,3 +9,6 @@ __pycache__/
 *.log
 .DS_Store
 Thumbs.db
+
+# large raw traces (re-download with data/workload_traces/prepare_alibaba.py)
+data/workload_traces/alibaba_raw/

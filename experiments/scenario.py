@@ -23,6 +23,7 @@ from sim.job import Job
 from sim.region import Region
 from sim.engine import CloudSimulator
 from sim.forecast import CarbonForecaster
+from sim.network import NetworkModel
 
 from metrics.collector import MetricsCollector
 
@@ -31,6 +32,8 @@ from schedulers.cost_only import CostOnlyScheduler
 from schedulers.greenest_region import GreenestRegionScheduler
 from schedulers.temporal_green import TemporalGreenScheduler
 from schedulers.carbon_aware_moo import CarbonAwareMOOScheduler
+from schedulers.wait_awhile import WaitAwhileScheduler
+from schedulers.threshold import ThresholdScheduler
 
 from data.workload_traces.generate_workload import generate_jobs
 
@@ -192,9 +195,12 @@ def load_traces(period, region_names=CORE_REGIONS):
 def build_regions(
     traces,
     cpu_capacity=16,
-    memory_capacity=32
+    memory_capacity=None
 ):
     """Fresh Region objects (never share state between runs)."""
+
+    if memory_capacity is None:
+        memory_capacity = 2 * cpu_capacity
 
     regions = []
 
@@ -215,6 +221,7 @@ def build_regions(
                 idle_power_kw=profile["idle_power_kw"],
                 max_power_kw=profile["max_power_kw"],
                 pue=profile["pue"],
+                node_cpus=16,
             )
         )
 
@@ -306,6 +313,8 @@ SCHEDULER_LABELS = {
     "greenops_spatial": "GreenOps (spatial only)",
     "greenops_moo": "GreenOps MOO",
     "greenops_pareto": "GreenOps Pareto",
+    "wait_awhile": "Wait Awhile",
+    "threshold": "Online Threshold",
 }
 
 BASELINES = (
@@ -340,6 +349,12 @@ def make_scheduler(key, max_wait=12, **params):
             **params
         )
 
+    if key == "wait_awhile":
+        return WaitAwhileScheduler()
+
+    if key == "threshold":
+        return ThresholdScheduler()
+
     if key == "greenops_spatial":
         return CarbonAwareMOOScheduler(max_wait=0, **params)
 
@@ -357,6 +372,7 @@ def run_simulation(
     forecast_error=0.0,
     forecast_seed=0,
     cpu_capacity=16,
+    network=None,
     verbose=False
 ):
     """
@@ -365,7 +381,13 @@ def run_simulation(
     Returns (summary dict, per-job DataFrame).
     """
 
-    regions = build_regions(traces, cpu_capacity=cpu_capacity)
+    regions = build_regions(
+        traces,
+        cpu_capacity=cpu_capacity,
+        memory_capacity=(
+            4 * cpu_capacity if cpu_capacity > 64 else None
+        ),
+    )
 
     forecaster = None
 
@@ -384,6 +406,7 @@ def run_simulation(
         scheduler=scheduler,
         metrics=metrics,
         forecaster=forecaster,
+        network=network,
         verbose=verbose
     )
 

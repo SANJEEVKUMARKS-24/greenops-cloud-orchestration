@@ -12,7 +12,8 @@ class Region:
         carbon_trace,
         idle_power_kw=0.10,
         max_power_kw=0.50,
-        pue=1.0
+        pue=1.0,
+        node_cpus=None
     ):
 
         # ==========================================
@@ -83,6 +84,11 @@ class Region:
         self.max_power_kw = max_power_kw
 
         self.pue = pue
+
+        # idle/max power are specified for one node of
+        # `node_cpus` vCPUs; a region is a pool of such nodes.
+        # Default: the whole region is one node.
+        self.node_cpus = node_cpus or cpu_capacity
 
         # ==========================================
         # Running jobs
@@ -206,9 +212,11 @@ class Region:
         """
         Facility energy (kWh) attributed to one job.
 
-        The job's CPU share of the region is
+        The job's CPU share of a node is
 
-            share = cpu_required / cpu_capacity
+            share = cpu_required / node_cpus
+
+        (a job wider than one node spans several nodes, share > 1)
 
         It is charged its share of the dynamic power AND
         its share of the idle (static) power, so that the
@@ -229,14 +237,9 @@ class Region:
         # Calculate utilization caused by job
         # ------------------------------------------
 
-        share = (
-            cpu_required /
-            self.cpu_capacity
-        )
-
         share = max(
             0.0,
-            min(1.0, share)
+            cpu_required / self.node_cpus
         )
 
         # ------------------------------------------

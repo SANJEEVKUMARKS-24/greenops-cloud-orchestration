@@ -1,0 +1,31 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Temporal shifting.}
+Wiesner et al.~\cite{wiesner2021wait} showed that deferring
+delay-tolerant jobs to low-carbon hours reduces emissions, with gains
+that depend on the region and the length of the flexibility window.
+Google shapes datacenter capacity using day-ahead carbon
+forecasts~\cite{radovanovic2023carbon}, and CarbonScaler~\cite{hanafy2023carbonscaler}
+scales elastic jobs with carbon intensity. These works take a single
+region as given. GreenOps uses Wiesner et al.'s strategy as a baseline.
+
+\paragraph{Spatial and spatio-temporal shifting.}
+Geo-distributed carbon-aware load balancing dates back at least to
+Zhou et al.~\cite{zhou2013carbon}, and has since been applied to
+serverless functions~\cite{chadha2023greencourier,gsteiger2024caribou}
+and edge computing~\cite{wu2025carbonedge}. Sukprasert et
+al.~\cite{sukprasert2024spatiotemporal} extend joint shifting to water
+and land use. Lechowicz et al.~\cite{lechowicz2024soad} give
+competitive online algorithms for spatio-temporal allocation with
+deadlines and movement costs. These build on threshold
+rules~\cite{elyaniv2001search}, which we use as a forecast-free baseline.
+
+\paragraph{Limits of shifting.}
+Acun et al.~\cite{acun2024limitations} found that the realistic
+benefits of both kinds of shifting are much smaller than idealised
+analyses suggest. Simple policies capture most of what is achievable,
+and capacity, latency and the cost of moving work limit the rest. Our
+study is complementary: we measure how SLA risk, data movement and
+forecast error shape the trade-off in a trace-driven setting, and
+compare published policies under identical constraints.

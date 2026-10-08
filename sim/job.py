@@ -11,7 +11,9 @@ class Job:
         flexibility="strict",
         max_cost=None,
         carbon_priority=0.5,
-        allowed_regions=None
+        allowed_regions=None,
+        home_region=None,
+        data_gb=0.0
     ):
 
         self.job_id = job_id
@@ -49,6 +51,11 @@ class Job:
             else frozenset(allowed_regions)
         )
 
+        # Region where the job's input data lives and how
+        # much of it must be moved if the job runs elsewhere.
+        self.home_region = home_region
+        self.data_gb = data_gb
+
         # --------------------------------
         # Scheduling information
         # --------------------------------
@@ -75,6 +82,11 @@ class Job:
         self.carbon_emitted = 0
         self.carbon_intensity = 0
         self.cost = 0
+
+        self.transfer_hours = 0.0
+        self.transfer_energy = 0.0
+        self.transfer_carbon = 0.0
+        self.transfer_cost = 0.0
 
     # ==================================================
     # DERIVED PROPERTIES

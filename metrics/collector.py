@@ -44,6 +44,11 @@ class MetricsCollector:
             "carbon_intensity": job.carbon_intensity,
             "carbon_emitted": job.carbon_emitted,
             "cost": job.cost,
+            "home_region": job.home_region,
+            "moved": bool(job.transfer_energy > 0),
+            "data_gb": job.data_gb,
+            "transfer_carbon": job.transfer_carbon,
+            "transfer_cost": job.transfer_cost,
             "decisions": job.decisions,
         }
 
@@ -96,6 +101,10 @@ class MetricsCollector:
             "p95_latency": done["latency"].quantile(0.95),
             "p99_latency": done["latency"].quantile(0.99),
             "average_wait": done["waiting_time"].mean(),
+            "moved_jobs_pct": done["moved"].mean() * 100,
+            "transfer_carbon_g": done["transfer_carbon"].sum(),
+            "transfer_cost": done["transfer_cost"].sum(),
+            "transferred_gb": done.loc[done["moved"], "data_gb"].sum(),
         }
 
         # ----------------------------------------------

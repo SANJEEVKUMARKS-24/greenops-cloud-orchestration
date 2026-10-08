@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
 
 
+# Sentinel: decide() may return (WAIT, time) to be asked again at `time`
+# without committing to a region (used by online threshold policies).
+WAIT = object()
+
+
 class Scheduler(ABC):
     """
     Common interface for every scheduling policy.
@@ -10,13 +15,14 @@ class Scheduler(ABC):
         None                    nothing can run now (job is queued)
         region                  run immediately in `region`
         (region, start_time)    temporal shift: run at `start_time`
+        (WAIT, time)            ask again at `time`
 
     Hard constraints shared by every policy (so that baselines are
     compared fairly with GreenOps):
 
         * data locality   (job.allowed_regions)
         * resource fit    (CPU / memory)
-        * cost budget     (job.max_cost)
+        * cost budget     (job.max_cost, including data egress)
     """
 
     name = "Scheduler"
@@ -27,13 +33,17 @@ class Scheduler(ABC):
 
     forecaster = None
 
+    network = None
+
     # ==================================================
     # SIMULATOR BINDING
     # ==================================================
 
-    def bind(self, regions, forecaster=None):
+    def bind(self, regions, forecaster=None, network=None):
 
         self.forecaster = forecaster
+
+        self.network = network
 
     # ==================================================
     # DECISION
@@ -42,6 +52,36 @@ class Scheduler(ABC):
     @abstractmethod
     def decide(self, job, candidate_regions, current_time):
         pass
+
+    # ==================================================
+    # DATA-TRANSFER HELPERS
+    # ==================================================
+
+    def transfer_hours(self, job, region):
+
+        if self.network is None:
+            return 0.0
+
+        return self.network.transfer_hours(job, region)
+
+    def total_cost(self, job, region):
+        """Compute cost plus data-egress cost."""
+
+        cost = region.calculate_cost(job)
+
+        if self.network is not None:
+            cost += self.network.transfer_cost(job, region)
+
+        return cost
+
+    def latest_start_in(self, job, region):
+        """Latest start that still meets the deadline in `region`."""
+
+        return (
+            job.deadline
+            - job.runtime
+            - self.transfer_hours(job, region)
+        )
 
     # ==================================================
     # FEASIBILITY HELPERS
@@ -62,7 +102,7 @@ class Scheduler(ABC):
 
             if (
                 job.max_cost is not None
-                and region.calculate_cost(job) > job.max_cost
+                and self.total_cost(job, region) > job.max_cost
             ):
                 continue
 
@@ -118,3 +158,40 @@ class Scheduler(ABC):
         """Real-time (measured) intensity - no forecast error."""
 
         return region.get_carbon_intensity(current_time)
+
+    def estimated_carbon(self, job, region, current_time, start_time):
+        """
+        Believed total emissions (gCO2eq) of running `job` in `region`
+        from `start_time`: compute energy x forecast intensity over the
+        run window, plus the carbon of moving its input data.
+        """
+
+        hours = self.transfer_hours(job, region)
+
+        intensity = self.intensity_signal(
+            region,
+            current_time,
+            start_time + hours,
+            job.runtime
+        )
+
+        if intensity is None:
+            return None
+
+        carbon = region.calculate_energy(
+            job.runtime,
+            job.cpu_required
+        ) * intensity
+
+        if self.network is not None:
+
+            carbon += self.network.transfer_carbon(
+                job,
+                region,
+                start_time,
+                intensity_of=lambda r, t: self.intensity_signal(
+                    r, current_time, t, 0
+                ),
+            )
+
+        return carbon
