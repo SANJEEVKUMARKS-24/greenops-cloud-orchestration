@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Assessment 5</title>
+<style>
+  @page { size: A4; margin: 22mm 20mm 22mm 20mm; }
+  html, body { background:#fff; }
+  body { font-family: "Times New Roman", Times, serif; color:#000; font-size:12pt; line-height:1.5; margin:0; }
+  h1 { font-size:16pt; text-align:center; margin:0 0 4px; }
+  .sub { text-align:center; margin:0 0 18px; }
+  h2 { font-size:13pt; margin:20px 0 6px; page-break-after:avoid; }
+  p { margin:6px 0 8px; text-align:justify; }
+  ul { margin:4px 0 8px; padding-left:24px; }
+  li { margin:3px 0; text-align:justify; }
+  figure { margin:12px 0 2px; text-align:center; page-break-inside:avoid; }
+  figure svg { width:100%; height:auto; }
+  .cap { text-align:center; font-size:10.5pt; margin:4px 0 16px; }
+  table { border-collapse:collapse; width:100%; font-size:10.5pt; margin:8px 0 4px; page-break-inside:avoid; }
+  th, td { border:1px solid #000; padding:4px 6px; text-align:left; vertical-align:top; }
+  th { font-weight:bold; }
+  svg text { font-family: Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<h1>Assessment 5: Smart Store Initiative</h1>
+<p class="sub">Mohammed Faheem K (24MID0158), Nithish Kumar (24MIC0032), Sanjeev Kumar (24MID0172)<br>
+Vellore Institute of Technology, Vellore</p>
+
+<p><b>Question:</b> As the Lead Cloud Architect of a retail company starting a Smart Store Initiative, how would we design the system across IaaS, PaaS and SaaS? The portal must run on IaaS with JavaScript client components, the IoT sensor backend must run on PaaS, and team collaboration must use SaaS. All three must work together securely and efficiently.</p>
+
+<h2>1. Overview of the Solution</h2>
+<p>We decided which service model to use for each part based on how much control that part needs. The web portal needs full control of the operating system and web server, so it goes on <b>IaaS</b>. The IoT backend only needs our processing code, so it goes on <b>PaaS</b>, where the provider runs the servers, scaling and databases. The collaboration tool needs no code from us at all, so we use a <b>SaaS</b> product.</p>
+<p>The three tiers do not call each other directly. They connect through one <b>integration layer</b> made up of an API gateway, an event bus, a single identity provider and private network links. On top of this we use our own project, <b>GreenOps</b>, to run flexible background work (analytics, ML training, backups) in the cloud region and hour with the cleanest electricity, without delaying anything urgent. Figure 1 shows the full design.</p>
+
+<figure><svg viewBox="0 0 1000 660" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker>
+  </defs>
+  <rect width="1000" height="660" fill="#fff"/>
+  <!-- actors -->
+  <g font-size="12.5" fill="#111111" text-anchor="middle">
+    <rect x="40" y="18" width="280" height="50" rx="25" fill="#f5f5f5" stroke="#999999"/>
+    <text x="180" y="40" font-weight="600">Store visitors</text><text x="180" y="57" font-size="11" fill="#444444">web &amp; mobile browsers</text>
+    <rect x="360" y="18" width="280" height="50" rx="25" fill="#f5f5f5" stroke="#999999"/>
+    <text x="500" y="40" font-weight="600">In-store IoT devices</text><text x="500" y="57" font-size="11" fill="#444444">BLE beacons · temperature · inventory</text>
+    <rect x="680" y="18" width="280" height="50" rx="25" fill="#f5f5f5" stroke="#999999"/>
+    <text x="820" y="40" font-weight="600">Store managers &amp; HQ</text><text x="820" y="57" font-size="11" fill="#444444">operations, merchandising, marketing</text>
+  </g>
+  <g class="fl" fill="none" stroke="#333333" stroke-width="1.6">
+    <path d="M180,68 V104" marker-end="url(#a1)"/>
+    <path d="M500,68 V104" marker-end="url(#a1)"/>
+    <path d="M820,68 V104" marker-end="url(#a1)"/>
+  </g>
+
+  <!-- IaaS -->
+  <rect x="40" y="108" width="280" height="300" rx="12" fill="#f5f5f5" stroke="#444444" stroke-width="1.5"/>
+  <text x="60" y="134" font-size="14" font-weight="700" fill="#111111">IaaS · Interactive web portal</text>
+  <g font-size="12" fill="#111111">
+    <rect x="60" y="148" width="240" height="44" rx="7" fill="#fff" stroke="#999999"/><text x="76" y="175">CDN + web application firewall</text>
+    <rect x="60" y="202" width="240" height="44" rx="7" fill="#fff" stroke="#999999"/><text x="76" y="229">Load balancer (TLS termination)</text>
+    <rect x="60" y="256" width="240" height="58" rx="7" fill="#fff" stroke="#999999"/><text x="76" y="280">VM auto-scaling group</text><text x="76" y="300" font-size="11" fill="#444444">Nginx + Node.js · hardened OS image</text>
+    <rect x="60" y="324" width="240" height="44" rx="7" fill="#fff" stroke="#999999"/><text x="76" y="351">Session cache + portal DB (on VMs)</text>
+  </g>
+  <text x="60" y="394" font-size="10.5" fill="#111111">We manage: OS · web server · runtime · patches</text>
+
+  <!-- PaaS -->
+  <rect x="360" y="108" width="280" height="300" rx="12" fill="#f5f5f5" stroke="#444444" stroke-width="1.5"/>
+  <text x="380" y="134" font-size="14" font-weight="700" fill="#111111">PaaS · IoT data backend</text>
+  <g font-size="12" fill="#111111">
+    <rect x="380" y="148" width="240" height="44" rx="7" fill="#fff" stroke="#999999"/><text x="396" y="175">IoT hub (MQTT, device certificates)</text>
+    <rect x="380" y="202" width="240" height="44" rx="7" fill="#fff" stroke="#999999"/><text x="396" y="229">Managed event stream</text>
+    <rect x="380" y="256" width="240" height="58" rx="7" fill="#fff" stroke="#999999"/><text x="396" y="280">Serverless functions</text><text x="396" y="300" font-size="11" fill="#444444">auto-scaled per event, pay per use</text>
+    <rect x="380" y="324" width="240" height="44" rx="7" fill="#fff" stroke="#999999"/><text x="396" y="351">Managed NoSQL · time-series · lake</text>
+  </g>
+  <text x="380" y="394" font-size="10.5" fill="#111111">Provider manages: runtime · scaling · databases</text>
+
+  <!-- SaaS -->
+  <rect x="680" y="108" width="280" height="300" rx="12" fill="#f5f5f5" stroke="#444444" stroke-width="1.5"/>
+  <text x="700" y="134" font-size="14" font-weight="700" fill="#444444">SaaS · Team collaboration</text>
+  <g font-size="12" fill="#111111">
+    <rect x="700" y="148" width="240" height="44" rx="7" fill="#fff" stroke="#999999"/><text x="716" y="175">Chat channels (e.g. #store-ops)</text>
+    <rect x="700" y="202" width="240" height="44" rx="7" fill="#fff" stroke="#999999"/><text x="716" y="229">Shared documents &amp; calendars</text>
+    <rect x="700" y="256" width="240" height="58" rx="7" fill="#fff" stroke="#999999"/><text x="716" y="280">Tasks &amp; campaign planner</text><text x="716" y="300" font-size="11" fill="#444444">stock, schedules, rollouts</text>
+    <rect x="700" y="324" width="240" height="44" rx="7" fill="#fff" stroke="#999999"/><text x="716" y="351">Webhooks &amp; REST APIs</text>
+  </g>
+  <text x="700" y="394" font-size="10.5" fill="#444444">We manage: users, data &amp; settings only</text>
+
+  <!-- tier <-> integration -->
+  <g fill="none" stroke="#333333" stroke-width="1.6">
+    <path d="M180,410 V446" marker-start="url(#a1)" marker-end="url(#a1)"/>
+    <path d="M500,410 V446" marker-start="url(#a1)" marker-end="url(#a1)"/>
+    <path d="M820,410 V446" marker-start="url(#a1)" marker-end="url(#a1)"/>
+  </g>
+
+  <!-- Integration -->
+  <rect x="40" y="450" width="920" height="96" rx="12" fill="#f5f5f5" stroke="#444444" stroke-width="1.4"/>
+  <text x="60" y="474" font-size="13.5" font-weight="700" fill="#111111">Secure integration layer</text>
+  <g font-size="11.5" fill="#111111" text-anchor="middle">
+    <rect x="60"  y="486" width="205" height="46" rx="7" fill="#fff" stroke="#999999"/><text x="162" y="505" font-weight="600">API gateway</text><text x="162" y="522" font-size="10.5" fill="#444444">REST + WebSocket, rate limits</text>
+    <rect x="285" y="486" width="205" height="46" rx="7" fill="#fff" stroke="#999999"/><text x="387" y="505" font-weight="600">Event bus</text><text x="387" y="522" font-size="10.5" fill="#444444">decoupled publish / subscribe</text>
+    <rect x="510" y="486" width="205" height="46" rx="7" fill="#fff" stroke="#999999"/><text x="612" y="505" font-weight="600">Identity provider</text><text x="612" y="522" font-size="10.5" fill="#444444">SSO · OAuth 2.0 / OIDC · MFA</text>
+    <rect x="735" y="486" width="205" height="46" rx="7" fill="#fff" stroke="#999999"/><text x="837" y="505" font-weight="600">Private links · KMS</text><text x="837" y="522" font-size="10.5" fill="#444444">secrets vault · central logs</text>
+  </g>
+
+  <path d="M500,546 V578" fill="none" stroke="#333333" stroke-width="1.6" marker-end="url(#a1)"/>
+
+  <!-- GreenOps -->
+  <rect x="40" y="582" width="920" height="62" rx="12" fill="#f5f5f5" stroke="#444444" stroke-width="1.6"/>
+  <text x="60" y="606" font-size="13.5" font-weight="700" fill="#111111">GreenOps carbon-aware orchestrator (our project)</text>
+  <text x="60" y="628" font-size="11.5" fill="#333333">Places flexible work (analytics, ML retraining, backups) in the cleanest region and hour; real-time paths are never delayed</text>
+</svg></figure>
+<p class="cap">Figure 1: Overall architecture of the Smart Store system</p>
+
+<h2>2. IaaS Tier: Interactive Web Portal</h2>
+<p>We chose IaaS because the portal needs things that only IaaS allows: our own Nginx configuration, a fixed Node.js version, OS hardening and custom TLS settings.</p>
+<ul>
+  <li><b>Compute:</b> a group of Linux virtual machines (for example AWS EC2 or Azure VM Scale Sets) that grows and shrinks with the number of visitors. Each VM runs Nginx in front of a Node.js application. All VMs are created from one hardened image, and the network is written in Terraform so it can be rebuilt the same way in every region.</li>
+  <li><b>Network:</b> one virtual network per region with three subnets. The public subnet has only the load balancer and the NAT gateway. The VMs sit in a private application subnet, and the cache and database sit in a private data subnet. Each subnet only accepts traffic from the layer in front of it.</li>
+  <li><b>JavaScript client:</b> the static JavaScript and CSS files are served from a CDN. Live data such as stock levels, offers and queue length is pushed to the page over a <b>WebSocket</b> through the API gateway, so the page updates without reloading.</li>
+  <li><b>Security:</b> a web application firewall at the CDN, HTTPS everywhere, no SSH open to the internet, automatic OS patching and encrypted disks.</li>
+</ul>
+
+<figure><svg viewBox="0 0 1000 450" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker>
+  <marker id="a2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#444444"/></marker></defs>
+  <rect width="1000" height="450" fill="#fff"/>
+  <g font-size="12" fill="#111111">
+    <!-- CDN -->
+    <rect x="20" y="30" width="160" height="70" rx="9" fill="#f5f5f5" stroke="#999999"/>
+    <text x="100" y="58" text-anchor="middle" font-weight="600">CDN + WAF</text><text x="100" y="78" text-anchor="middle" font-size="11" fill="#444444">static JS / CSS · TLS</text>
+    <!-- Browser -->
+    <rect x="20" y="170" width="160" height="110" rx="9" fill="#f5f5f5" stroke="#999999"/>
+    <text x="100" y="198" text-anchor="middle" font-weight="600">Visitor browser</text>
+    <text x="100" y="220" text-anchor="middle" font-size="11" fill="#444444">JavaScript client</text>
+    <text x="100" y="238" text-anchor="middle" font-size="11" fill="#444444">live stock · offers</text>
+    <text x="100" y="256" text-anchor="middle" font-size="11" fill="#444444">store map</text>
+
+    <!-- VPC -->
+    <rect x="300" y="20" width="520" height="395" rx="12" fill="#f5f5f5" stroke="#444444" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="318" y="42" font-size="12.5" font-weight="700" fill="#111111">VPC (one per region) · defined in Terraform</text>
+
+    <rect x="318" y="56" width="484" height="86" rx="8" fill="#fff" stroke="#999999"/>
+    <text x="330" y="74" font-size="10.5" font-weight="600" fill="#333333">PUBLIC SUBNET</text>
+    <rect x="340" y="84" width="200" height="44" rx="6" fill="#ffffff" stroke="#444444"/><text x="440" y="111" text-anchor="middle">Load balancer (HTTPS)</text>
+    <rect x="580" y="84" width="200" height="44" rx="6" fill="#f5f5f5" stroke="#999999"/><text x="680" y="111" text-anchor="middle">NAT gateway (egress)</text>
+
+    <rect x="318" y="160" width="484" height="126" rx="8" fill="#fff" stroke="#999999"/>
+    <text x="330" y="178" font-size="10.5" font-weight="600" fill="#333333">PRIVATE APP SUBNET</text><text x="795" y="178" font-size="10.5" font-weight="600" fill="#333333" text-anchor="end">AUTO-SCALING GROUP</text>
+    <rect x="340" y="190" width="140" height="80" rx="6" fill="#ffffff" stroke="#444444"/><text x="410" y="222" text-anchor="middle" font-weight="600">VM 1</text><text x="410" y="242" text-anchor="middle" font-size="10.5" fill="#444444">Nginx + Node.js</text>
+    <rect x="490" y="190" width="140" height="80" rx="6" fill="#ffffff" stroke="#444444"/><text x="560" y="222" text-anchor="middle" font-weight="600">VM 2</text><text x="560" y="242" text-anchor="middle" font-size="10.5" fill="#444444">Nginx + Node.js</text>
+    <rect x="640" y="190" width="140" height="80" rx="6" fill="#fff" stroke="#444444" stroke-dasharray="4 3"/><text x="710" y="222" text-anchor="middle" font-weight="600" fill="#333333">VM n</text><text x="710" y="242" text-anchor="middle" font-size="10.5" fill="#333333">added under load</text>
+
+    <rect x="318" y="304" width="484" height="96" rx="8" fill="#fff" stroke="#999999"/>
+    <text x="330" y="322" font-size="10.5" font-weight="600" fill="#333333">PRIVATE DATA SUBNET</text>
+    <rect x="340" y="334" width="200" height="50" rx="6" fill="#f5f5f5" stroke="#999999"/><text x="440" y="356" text-anchor="middle">Session cache</text><text x="440" y="373" text-anchor="middle" font-size="10.5" fill="#444444">Redis on VM</text>
+    <rect x="580" y="334" width="200" height="50" rx="6" fill="#f5f5f5" stroke="#999999"/><text x="680" y="356" text-anchor="middle">Portal database</text><text x="680" y="373" text-anchor="middle" font-size="10.5" fill="#444444">PostgreSQL · encrypted</text>
+
+    <!-- API gateway -->
+    <rect x="850" y="190" width="135" height="80" rx="9" fill="#f5f5f5" stroke="#444444"/>
+    <text x="917" y="216" text-anchor="middle" font-weight="600">API gateway</text>
+    <text x="917" y="235" text-anchor="middle" font-size="10.5" fill="#444444">private endpoint</text>
+    <text x="917" y="252" text-anchor="middle" font-size="10.5" fill="#444444">→ PaaS backend</text>
+  </g>
+  <g fill="none" stroke="#333333" stroke-width="1.6">
+    <path d="M100,170 V102" marker-end="url(#a2)"/>
+    <path d="M180,200 H260 V106 H338" marker-end="url(#a2)"/>
+    <path d="M465,128 V188" marker-end="url(#a2)"/>
+    <path d="M520,128 V188" marker-end="url(#a2)"/>
+    <path d="M470,270 V332" marker-end="url(#a2)"/>
+    <path d="M680,270 V332" marker-end="url(#a2)"/>
+    <path d="M780,230 H848" marker-end="url(#a2)"/>
+  </g>
+  <path d="M100,280 V432 H917 V272" fill="none" stroke="#444444" stroke-width="1.5" stroke-dasharray="5 4" marker-start="url(#a2b)" marker-end="url(#a2b)"/>
+  <g font-size="10.5" fill="#333333">
+    <text x="108" y="140">static assets</text>
+    <text x="188" y="218">page + API calls</text>
+    <text x="560" y="446" fill="#444444" text-anchor="middle">WebSocket via API gateway: live stock and offer updates pushed to the page</text>
+  </g>
+</svg></figure>
+<p class="cap">Figure 2: Network layout of the IaaS web portal</p>
+
+<h2>3. PaaS Tier: Real-Time IoT Backend</h2>
+<p>Sensor data arrives very often and in bursts, for example when a store opens. We do not want to manage servers for this, so we use PaaS. The provider handles the runtime, scaling and database setup, and our developers only write the functions that process the sensor messages.</p>
+<ul>
+  <li><b>Device connection:</b> beacons, temperature sensors and inventory sensors send data through an in-store gateway to a managed <b>IoT hub</b> (AWS IoT Core or Azure IoT Hub). Messages use MQTT over TLS, and every device has its own certificate, so one stolen device can be blocked on its own.</li>
+  <li><b>Ingestion:</b> the hub passes messages to a managed <b>event stream</b> (Kinesis or Event Hubs). The stream absorbs sudden bursts and lets us replay old data.</li>
+  <li><b>Fast path:</b> <b>serverless functions</b> check each message against simple rules, such as a fridge above 5 °C or a shelf running low. They save the live state in a managed NoSQL and time-series database and send alerts to the event bus. This happens within seconds.</li>
+  <li><b>Slow path:</b> all raw data is stored in a <b>data lake</b>. Daily sales and footfall reports and weekly demand-forecast training run as batch jobs. These jobs are not urgent, so GreenOps schedules them (Section 6).</li>
+</ul>
+
+<figure><svg viewBox="0 0 1000 410" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker></defs>
+  <rect width="1000" height="410" fill="#fff"/>
+  <!-- lanes -->
+  <rect x="640" y="20" width="345" height="140" rx="12" fill="#f5f5f5" stroke="#999999"/>
+  <text x="656" y="40" font-size="10.5" font-weight="700" fill="#111111">FAST PATH · seconds · never delayed</text>
+  <rect x="640" y="230" width="345" height="140" rx="12" fill="#f5f5f5" stroke="#999999"/>
+  <text x="656" y="250" font-size="10.5" font-weight="700" fill="#111111">SLOW PATH · hours · flexible → GreenOps</text>
+
+  <g font-size="12" fill="#111111" text-anchor="middle">
+    <rect x="15"  y="160" width="130" height="80" rx="9" fill="#f5f5f5" stroke="#999999"/>
+    <text x="80" y="188" font-weight="600">Store sensors</text><text x="80" y="207" font-size="10.5" fill="#444444">BLE beacons</text><text x="80" y="223" font-size="10.5" fill="#444444">temp · inventory</text>
+    <rect x="170" y="160" width="130" height="80" rx="9" fill="#f5f5f5" stroke="#999999"/>
+    <text x="235" y="188" font-weight="600">Edge gateway</text><text x="235" y="207" font-size="10.5" fill="#444444">in-store</text><text x="235" y="223" font-size="10.5" fill="#444444">MQTT over TLS</text>
+    <rect x="325" y="160" width="130" height="80" rx="9" fill="#ffffff" stroke="#444444"/>
+    <text x="390" y="188" font-weight="600">IoT hub</text><text x="390" y="207" font-size="10.5" fill="#444444">device registry</text><text x="390" y="223" font-size="10.5" fill="#444444">X.509 per device</text>
+    <rect x="480" y="160" width="130" height="80" rx="9" fill="#ffffff" stroke="#444444"/>
+    <text x="545" y="188" font-weight="600">Event stream</text><text x="545" y="207" font-size="10.5" fill="#444444">partitioned</text><text x="545" y="223" font-size="10.5" fill="#444444">by store</text>
+
+    <rect x="656" y="55" width="150" height="80" rx="9" fill="#fff" stroke="#444444"/>
+    <text x="731" y="83" font-weight="600">Serverless</text><text x="731" y="100" font-weight="600">functions</text><text x="731" y="119" font-size="10.5" fill="#444444">rules · enrich</text>
+    <rect x="822" y="55" width="150" height="80" rx="9" fill="#fff" stroke="#444444"/>
+    <text x="897" y="83" font-weight="600">Managed NoSQL</text><text x="897" y="100" font-weight="600">+ time-series</text><text x="897" y="119" font-size="10.5" fill="#444444">live store state</text>
+
+    <rect x="656" y="265" width="150" height="80" rx="9" fill="#fff" stroke="#444444"/>
+    <text x="731" y="293" font-weight="600">Data lake</text><text x="731" y="312" font-size="10.5" fill="#444444">raw archive</text><text x="731" y="328" font-size="10.5" fill="#444444">replayable</text>
+    <rect x="822" y="265" width="150" height="80" rx="9" fill="#fff" stroke="#444444" stroke-width="1.6"/>
+    <text x="897" y="290" font-weight="600">Batch analytics</text><text x="897" y="307" font-weight="600">&amp; ML retraining</text><text x="897" y="327" font-size="10.5" fill="#111111">scheduled by GreenOps</text>
+  </g>
+  <g fill="none" stroke="#333333" stroke-width="1.6">
+    <path d="M145,200 H168" marker-end="url(#a3)"/>
+    <path d="M300,200 H323" marker-end="url(#a3)"/>
+    <path d="M455,200 H478" marker-end="url(#a3)"/>
+    <path d="M610,200 H625 V95 H654" marker-end="url(#a3)"/>
+    <path d="M625,200 V305 H654" marker-end="url(#a3)"/>
+    <path d="M806,95 H820" marker-end="url(#a3)"/>
+    <path d="M806,305 H820" marker-end="url(#a3)"/>
+  </g>
+  <text x="656" y="153" font-size="10.5" fill="#111111">alerts → event bus → portal &amp; #store-ops</text>
+  <text x="656" y="363" font-size="10.5" fill="#111111">reports &amp; forecasts due by 06:00 next day</text>
+  <text x="15" y="398" font-size="10.5" fill="#333333">Everything to the right of the edge gateway is managed by the provider: runtime, scaling, database provisioning and patching.</text>
+</svg></figure>
+<p class="cap">Figure 3: IoT data pipeline with a fast path and a slow path</p>
+
+<h2>4. SaaS Tier: Team Collaboration</h2>
+<p>Store managers and the head office need chat, shared documents and planning straight away, without anyone running servers or writing code. We therefore use a SaaS product such as Microsoft 365 (Teams, SharePoint, Planner) or Google Workspace. The vendor runs and updates everything, and our work is limited to the following:</p>
+<ul>
+  <li><b>Identity:</b> staff log in through the same identity provider as the rest of the system, using single sign-on and multi-factor authentication. Accounts are added and removed automatically from HR records, so a person who leaves loses access everywhere at once.</li>
+  <li><b>Integration:</b> the PaaS functions post alerts to a channel such as #store-ops using a webhook, for example “Store 12, fridge 3 is at 9 °C”. Stock plans, schedules and campaign rollouts are kept in shared documents and task lists.</li>
+  <li><b>Data protection:</b> data loss prevention rules, access only from company devices, and retention policies, all set from the vendor's admin console.</li>
+</ul>
+
+<h2>5. Secure and Efficient Integration</h2>
+<p>All communication between the tiers goes through the shared integration layer. Because the tiers are loosely coupled, each one can be changed or scaled without breaking the others. Table 1 lists each connection and how it is secured.</p>
+
+<table>
+<tr><th>Connection</th><th>How it works</th><th>How it is secured</th></tr>
+<tr><td>Portal to IoT data</td><td>API gateway (REST)</td><td>OAuth 2.0 tokens from the identity provider, rate limits, private endpoint</td></tr>
+<tr><td>IoT data to portal (live updates)</td><td>Event bus to WebSocket API</td><td>Each browser only receives its own store's updates</td></tr>
+<tr><td>IoT alerts to team chat</td><td>Event bus to SaaS webhook</td><td>Webhook address kept in a secrets vault; no personal data sent</td></tr>
+<tr><td>Users in all tiers</td><td>One identity provider (SSO)</td><td>MFA, least-privilege roles, automatic removal of old accounts</td></tr>
+<tr><td>Stored and moving data</td><td>Provider key management</td><td>TLS 1.2 or higher; encrypted disks, databases and data lake</td></tr>
+<tr><td>Monitoring</td><td>Central logging</td><td>All tiers send logs to one place, with alerts on unusual access</td></tr>
+</table>
+<p class="cap">Table 1: Integration and security between the tiers</p>
+
+<p>Figure 4 follows one real event through the system. A fridge sensor reports a high temperature, and within seconds the warning appears both on the store portal and in the managers' chat channel.</p>
+
+<figure><svg viewBox="0 0 1100 430" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker></defs>
+  <rect width="1100" height="430" fill="#fff"/>
+  <g font-size="11.5" font-weight="600" fill="#111111" text-anchor="middle">
+    <rect x="15"  y="15" width="110" height="44" rx="7" fill="#f5f5f5" stroke="#999999"/><text x="70" y="42">Fridge sensor</text>
+    <rect x="152" y="15" width="110" height="44" rx="7" fill="#ffffff" stroke="#444444"/><text x="207" y="42">IoT hub</text>
+    <rect x="289" y="15" width="110" height="44" rx="7" fill="#ffffff" stroke="#444444"/><text x="344" y="42">Function</text>
+    <rect x="426" y="15" width="110" height="44" rx="7" fill="#ffffff" stroke="#444444"/><text x="481" y="42">Database</text>
+    <rect x="563" y="15" width="110" height="44" rx="7" fill="#f5f5f5" stroke="#444444"/><text x="618" y="42">Event bus</text>
+    <rect x="700" y="15" width="110" height="44" rx="7" fill="#f5f5f5" stroke="#444444"/><text x="755" y="42">API gateway</text>
+    <rect x="837" y="15" width="110" height="44" rx="7" fill="#ffffff" stroke="#444444"/><text x="892" y="42">Web portal</text>
+    <rect x="974" y="15" width="110" height="44" rx="7" fill="#ffffff" stroke="#444444"/><text x="1029" y="42">Team chat</text>
+  </g>
+  <g stroke="#999999" stroke-width="1.2" stroke-dasharray="4 4">
+    <path d="M70,59 V400"/><path d="M207,59 V400"/><path d="M344,59 V400"/><path d="M481,59 V400"/>
+    <path d="M618,59 V400"/><path d="M755,59 V400"/><path d="M892,59 V400"/><path d="M1029,59 V400"/>
+  </g>
+  <g fill="none" stroke="#333333" stroke-width="1.5">
+    <path d="M70,100 H205"  marker-end="url(#a4)"/>
+    <path d="M207,142 H342" marker-end="url(#a4)"/>
+    <path d="M344,184 H479" marker-end="url(#a4)"/>
+    <path d="M344,226 H616" marker-end="url(#a4)"/>
+    <path d="M618,268 H753" marker-end="url(#a4)"/>
+    <path d="M755,310 H890" marker-end="url(#a4)"/>
+    <path d="M618,352 H1027" marker-end="url(#a4)"/>
+  </g>
+  <g font-size="10.5" fill="#111111" text-anchor="middle">
+    <text x="138" y="93">① 9 °C reading (MQTT/TLS)</text>
+    <text x="275" y="135">② rule → invoke</text>
+    <text x="412" y="177">③ write state</text>
+    <text x="480" y="219">④ publish TempBreach</text>
+    <text x="686" y="261">⑤ route to WebSocket</text>
+    <text x="823" y="303">⑥ “Chilled aisle” banner</text>
+    <text x="823" y="345">⑦ webhook → #store-ops: “Store 12, fridge 3 at 9 °C”</text>
+  </g>
+  <rect x="15" y="378" width="1070" height="40" rx="8" fill="#f5f5f5" stroke="#999999"/>
+  <text x="550" y="403" font-size="11" fill="#111111" text-anchor="middle">Strict real-time path: completes within seconds. GreenOps never delays it, but it may later run the analysis of this incident in a cleaner hour.</text>
+</svg></figure>
+<p class="cap">Figure 4: Flow of one temperature alert through all three tiers</p>
+
+<h2>6. Efficiency Using GreenOps (Our Project)</h2>
+<p>The design already avoids waste. The VMs scale with visitor numbers, the serverless functions are billed per message, and the SaaS tier needs no servers. Our GreenOps project adds one more factor, the <b>carbon emitted by the electricity</b> that runs each job.</p>
+<p>In GreenOps every job has a type, a deadline, a budget and a rule about which countries its data may be processed in. For each job the scheduler checks every allowed region and start hour. It compares their expected carbon emissions, cost and risk of missing the deadline, then chooses the best option. Figure 5 shows how this applies to the Smart Store workloads.</p>
+
+<figure><svg viewBox="0 0 1000 330" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker></defs>
+  <rect width="1000" height="330" fill="#fff"/>
+  <rect x="300" y="12" width="400" height="56" rx="10" fill="#f5f5f5" stroke="#444444" stroke-width="1.6"/>
+  <text x="500" y="36" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">GreenOps orchestrator</text>
+  <text x="500" y="56" font-size="11" fill="#333333" text-anchor="middle">classify job → list region × hour options → hard limits → score → dispatch</text>
+  <g fill="none" stroke="#333333" stroke-width="1.6">
+    <path d="M400,68 V84 H170 V102" marker-end="url(#a5)"/>
+    <path d="M500,68 V102" marker-end="url(#a5)"/>
+    <path d="M600,68 V84 H830 V102" marker-end="url(#a5)"/>
+  </g>
+  <g font-size="12" fill="#111111">
+    <rect x="30" y="106" width="280" height="150" rx="10" fill="#f5f5f5" stroke="#999999"/>
+    <text x="48" y="131" font-size="13" font-weight="700">Strict</text>
+    <text x="48" y="153" font-size="11" fill="#444444">portal page requests</text>
+    <text x="48" y="170" font-size="11" fill="#444444">live sensor alerts</text>
+    
+    <text x="48" y="205" font-weight="600">Run now</text>
+    <text x="48" y="224" font-size="11" fill="#444444">nearest healthy region,</text>
+    <text x="48" y="241" font-size="11" fill="#444444">never delayed</text>
+
+    <rect x="360" y="106" width="280" height="150" rx="10" fill="#f5f5f5" stroke="#999999"/>
+    <text x="378" y="131" font-size="13" font-weight="700">Batch (deadline-bound)</text>
+    <text x="378" y="153" font-size="11" fill="#444444">nightly sales &amp; footfall reports</text>
+    <text x="378" y="170" font-size="11" fill="#444444">due by 06:00</text>
+    
+    <text x="378" y="205" font-weight="600">Cleanest region / hour</text>
+    <text x="378" y="224" font-size="11" fill="#444444">that still finishes before 06:00</text>
+    <text x="378" y="241" font-size="11" fill="#444444">and fits the budget</text>
+
+    <rect x="690" y="106" width="280" height="150" rx="10" fill="#f5f5f5" stroke="#444444"/>
+    <text x="708" y="131" font-size="13" font-weight="700">Flexible</text>
+    <text x="708" y="153" font-size="11" fill="#444444">weekly ML demand forecasting,</text>
+    <text x="708" y="170" font-size="11" fill="#444444">backups, log compaction</text>
+    
+    <text x="708" y="205" font-weight="600">Delay up to 12 h + move</text>
+    <text x="708" y="224" font-size="11" fill="#444444">re-planned hourly with fresh</text>
+    <text x="708" y="241" font-size="11" fill="#444444">carbon forecasts</text>
+  </g>
+  <rect x="30" y="276" width="940" height="44" rx="10" fill="#f5f5f5" stroke="#444444"/>
+  <text x="500" y="303" font-size="12" fill="#111111" text-anchor="middle">Measured in our project: −26.8 % carbon vs round robin · −5.3 % vs “greenest region” · 0.09 % of jobs late · ≈ 0.1 ms per decision</text>
+</svg></figure>
+<p class="cap">Figure 5: How GreenOps handles each type of Smart Store workload</p>
+
+<p>Most of the slow-path work in Figure 3 is not urgent, which is where GreenOps helps. In our project tests using real 2024 electricity data, GreenOps reduced carbon emissions by <b>26.8%</b> compared with round-robin scheduling and by <b>5.3%</b> compared with always choosing the greenest region. Cost went up by less than 1%, almost all deadlines were met (0.09% of jobs finished late), and each decision took about 0.1 ms. Jobs whose data must stay in one country are never moved to another country; they can only be delayed to a cleaner hour.</p>
+
+<h2>7. Responsibility in Each Tier</h2>
+<table>
+<tr><th>Layer</th><th>IaaS (portal)</th><th>PaaS (IoT backend)</th><th>SaaS (collaboration)</th></tr>
+<tr><td>Application code and data</td><td>Our team</td><td>Our team</td><td>Our team (content and settings only)</td></tr>
+<tr><td>Runtime and middleware</td><td>Our team</td><td>Provider</td><td>Provider</td></tr>
+<tr><td>Operating system and patching</td><td>Our team</td><td>Provider</td><td>Provider</td></tr>
+<tr><td>Scaling</td><td>Our team (scaling rules)</td><td>Provider</td><td>Provider</td></tr>
+<tr><td>Hardware and data centre</td><td>Provider</td><td>Provider</td><td>Provider</td></tr>
+<tr><td>Identity and access</td><td colspan="3">Always our team: one identity provider, least-privilege roles and data residency rules</td></tr>
+</table>
+<p class="cap">Table 2: Who manages what in each service model</p>
+
+<table>
+<tr><th>Component</th><th>AWS example</th><th>Azure example</th></tr>
+<tr><td>Portal VMs and network</td><td>EC2 Auto Scaling, VPC, ALB, CloudFront, WAF</td><td>VM Scale Sets, VNet, Application Gateway, Front Door</td></tr>
+<tr><td>IoT ingestion</td><td>IoT Core, Kinesis Data Streams</td><td>IoT Hub, Event Hubs</td></tr>
+<tr><td>Processing and storage</td><td>Lambda, DynamoDB, Timestream, S3</td><td>Functions, Cosmos DB, Data Explorer, Data Lake Storage</td></tr>
+<tr><td>Integration and security</td><td>API Gateway, EventBridge, IAM Identity Center, KMS</td><td>API Management, Event Grid, Entra ID, Key Vault</td></tr>
+<tr><td>Collaboration</td><td colspan="2">Microsoft 365 or Google Workspace, connected using SSO and webhooks</td></tr>
+</table>
+<p class="cap">Table 3: Example services from two cloud providers</p>
+
+<h2>8. Conclusion</h2>
+<p>Each part of the Smart Store system uses the service model that gives it the control it needs. <b>IaaS</b> is used for the web portal, because we need full control of the OS and web server. <b>PaaS</b> is used for the IoT backend, because the provider handles the runtime, scaling and databases. <b>SaaS</b> is used for team collaboration, because it is ready immediately with nothing to maintain. A shared integration layer connects the tiers securely while keeping them independent. Finally, GreenOps makes the system efficient in carbon as well as cost: urgent work runs immediately, and flexible work runs in the cleanest region and hour that still meets its deadline.</p>
+
+</body>
+</html>
