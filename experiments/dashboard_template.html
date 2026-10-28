@@ -1,0 +1,518 @@
+<title>GreenOps Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column of panels; summary tiles first, then comparison, grid data, replay, sensitivity. */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --ink: #18201b;
+  --muted: #5b655e;
+  --line: #dde3de;
+  --bar: #b9c1bb;
+  --accent: #157a3e;
+  --accent-soft: #e3f1e8;
+  --late: #c0392b;
+  --no: #2a78d6;
+  --de: #eb6834;
+  --in: #1baf7a;
+  --strict: #4a3aa7;
+  --batch: #e87ba4;
+  --flex: #eda100;
+  --tg: #eb6834;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111512; --surface: #1a1f1b; --ink: #eef2ee; --muted: #a2aca4; --line: #2c342e;
+    --bar: #4c5650; --accent: #46c276; --accent-soft: #1d3325; --late: #ef6b5f;
+    --no: #3987e5; --de: #d95926; --in: #199e70; --strict: #9085e9; --batch: #d55181; --flex: #c98500; --tg: #d95926;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111512; --surface: #1a1f1b; --ink: #eef2ee; --muted: #a2aca4; --line: #2c342e;
+  --bar: #4c5650; --accent: #46c276; --accent-soft: #1d3325; --late: #ef6b5f;
+  --no: #3987e5; --de: #d95926; --in: #199e70; --strict: #9085e9; --batch: #d55181; --flex: #c98500; --tg: #d95926;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 28px 48px; display: grid; gap: 20px; }
+
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 2.1rem; line-height: 1.1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
+h2 { font-size: 1.02rem; font-weight: 600; margin: 0; text-wrap: balance; }
+.note { color: var(--muted); font-size: 0.86rem; margin: 0; }
+
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 3px; gap: 2px; }
+.seg button {
+  font: inherit; font-size: 0.86rem; border: 0; background: transparent; color: var(--muted);
+  padding: 5px 11px; border-radius: 6px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+.seg button:focus-visible, .btn:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 2px; min-width: 0; }
+.kpi .label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.kpi .value { font-family: var(--mono); font-size: 1.75rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.kpi .value.good { color: var(--accent); }
+.kpi .sub { font-size: 0.82rem; color: var(--muted); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 14px; display: grid; gap: 12px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.chart { width: 100%; overflow-x: auto; }
+.chart svg { display: block; width: 100%; height: auto; }
+svg text { font-family: var(--body); fill: var(--muted); font-size: 12px; }
+svg .num { font-family: var(--mono); fill: var(--ink); font-size: 12px; }
+svg .strong { fill: var(--ink); font-weight: 600; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.82rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.sw.line { height: 3px; border-radius: 2px; width: 16px; }
+.sw.dash { height: 0; border-top: 2px dashed var(--muted); width: 16px; border-radius: 0; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn { font: inherit; font-weight: 600; font-size: 0.9rem; border: 1px solid var(--accent); background: var(--accent); color: var(--surface); border-radius: 8px; padding: 6px 16px; cursor: pointer; min-width: 84px; }
+.slider { display: flex; align-items: center; gap: 10px; flex: 1 1 240px; min-width: 0; }
+.slider input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.slider output { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
+.stats { display: flex; flex-wrap: wrap; gap: 22px; font-size: 0.88rem; color: var(--muted); }
+.stats b { font-family: var(--mono); font-weight: 500; color: var(--ink); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+#tip {
+  position: absolute; pointer-events: none; background: var(--ink); color: var(--bg);
+  font-size: 0.8rem; line-height: 1.4; padding: 7px 10px; border-radius: 7px; max-width: 260px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); z-index: 20;
+}
+#tip b { font-weight: 600; }
+footer { color: var(--muted); font-size: 0.82rem; max-width: 80ch; }
+footer p { margin: 0 0 6px; }
+
+@media (max-width: 860px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .two { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 1.7rem; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>GreenOps Dashboard</h1>
+      <p class="lede">Carbon-aware scheduling across India, Germany and Norway. Every number comes from our SimPy experiments on real 2024 grid data (300 jobs per run, 20 seeds per season).</p>
+    </div>
+    <div class="seg" role="group" aria-label="Season" id="season">
+      <button type="button" id="season-both" data-v="both" aria-pressed="true">Both seasons</button>
+      <button type="button" id="season-winter" data-v="winter_2024" aria-pressed="false">Winter</button>
+      <button type="button" id="season-summer" data-v="summer_2024" aria-pressed="false">Summer</button>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="GreenOps headline results" id="kpis"></section>
+
+  <div class="two">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Scheduler comparison</h2>
+        <div class="seg" role="group" aria-label="Metric" id="metric">
+          <button type="button" id="metric-carbon" data-v="carbon" aria-pressed="true">Carbon</button>
+          <button type="button" id="metric-cost" data-v="cost" aria-pressed="false">Cost</button>
+          <button type="button" id="metric-sla" data-v="sla" aria-pressed="false">SLA</button>
+          <button type="button" id="metric-p95" data-v="p95" aria-pressed="false">p95 latency</button>
+        </div>
+      </div>
+      <div class="chart" id="bars"></div>
+      <p class="note" id="bars-note"></p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Grid carbon intensity, first week</h2>
+        <div class="seg" role="group" aria-label="Trace season" id="trace-season">
+          <button type="button" id="trace-winter" data-v="winter_2024" aria-pressed="true">Jan 2024</button>
+          <button type="button" id="trace-summer" data-v="summer_2024" aria-pressed="false">Jul 2024</button>
+        </div>
+      </div>
+      <div class="chart" id="traces"></div>
+      <div class="legend">
+        <span><i class="sw line" style="background:var(--in)"></i>India (modelled)</span>
+        <span><i class="sw line" style="background:var(--de)"></i>Germany</span>
+        <span><i class="sw line" style="background:var(--no)"></i>Norway</span>
+        <span>gCO₂eq per kWh, UTC</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Replay a simulation</h2>
+      <div class="seg" role="group" aria-label="Scheduler to replay" id="replay-sched"></div>
+    </div>
+    <p class="note">100 jobs on the January trace with 15 % forecast error. Each bar is a job running in a region; a dashed line is a job waiting for a cleaner hour or for capacity. Lane shading is the grid's carbon intensity: stronger shading means dirtier electricity.</p>
+    <div class="controls">
+      <button type="button" class="btn" id="play">Play</button>
+      <div class="slider">
+        <label for="time" class="note">Time</label>
+        <input type="range" id="time" min="0" max="100" step="0.1" value="100">
+        <output id="time-out" for="time">0 h</output>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="chart" id="replay"></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--strict)"></i>Strict (never delayed)</span>
+      <span><i class="sw" style="background:var(--batch)"></i>Batch</span>
+      <span><i class="sw" style="background:var(--flex)"></i>Flexible</span>
+      <span><i class="sw dash"></i>Waiting</span>
+      <span><i class="sw" style="background:transparent;border:2px solid var(--late)"></i>Finished late</span>
+    </div>
+  </section>
+
+  <div class="two">
+    <section class="panel">
+      <h2>When carbon forecasts are wrong</h2>
+      <div class="chart" id="forecast"></div>
+      <p class="note">Carbon per run as forecast error grows. Temporal Green trusts the forecast blindly; GreenOps re-plans every hour and degrades less. From 30 % error onward it is the greener of the two.</p>
+    </section>
+    <section class="panel">
+      <h2>How long is it worth waiting?</h2>
+      <div class="chart" id="maxwait"></div>
+      <p class="note">Carbon per run against the longest allowed delay. Almost all of GreenOps' gain arrives within 2 hours; longer waits mostly add latency.</p>
+    </section>
+  </div>
+
+  <footer>
+    <p><b>Data.</b> Germany and Norway: Energy-Charts generation mix with IPCC AR5 emission factors. India: modelled from CEA figures. Forecast error calibrated on National Grid ESO forecasts. Prices, power and PUE are representative assumptions.</p>
+    <p><b>Method.</b> Discrete-event simulation (SimPy). Comparison values are means over 20 random seeds per season; the replay is one run. Regenerate with <code>python -m experiments.build_dashboard</code>.</p>
+    <p>Mohammed Faheem K · Nithish Kumar · Sanjeev Kumar · VIT Vellore</p>
+  </footer>
+</div>
+
+<div id="tip" hidden></div>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+(function () {
+  "use strict";
+
+  var D = JSON.parse(document.getElementById("data").textContent);
+  var NS = "http://www.w3.org/2000/svg";
+  var tip = document.getElementById("tip");
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var state = { season: "both", metric: "carbon", trace: "winter_2024", sched: "greenops_moo", t: 0 };
+
+  // ---------------- helpers ----------------
+  function el(tag, attrs, parent, text) {
+    var node = document.createElementNS(NS, tag);
+    for (var k in attrs) {
+      if (k === "style") node.setAttribute("style", attrs[k]);
+      else node.setAttribute(k, attrs[k]);
+    }
+    if (text !== undefined) node.textContent = text;
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+  function svg(container, w, h, label) {
+    container.innerHTML = "";
+    return el("svg", { viewBox: "0 0 " + w + " " + h, role: "img", "aria-label": label }, container);
+  }
+  function fmt(v, d) { return Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function signed(v) { return (v > 0 ? "+" : v < 0 ? "−" : "") + fmt(Math.abs(v), 1) + " %"; }
+  function showTip(evt, html) {
+    tip.innerHTML = html;
+    tip.hidden = false;
+    var x = evt.pageX + 14, y = evt.pageY + 14;
+    var maxX = window.scrollX + document.documentElement.clientWidth - tip.offsetWidth - 8;
+    tip.style.left = Math.min(x, maxX) + "px";
+    tip.style.top = y + "px";
+  }
+  function hideTip() { tip.hidden = true; }
+  function segment(id, key, onChange) {
+    var group = document.getElementById(id);
+    group.addEventListener("click", function (e) {
+      var b = e.target.closest("button");
+      if (!b) return;
+      group.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      state[key] = b.dataset.v;
+      onChange();
+    });
+  }
+  function setPressed(id, value) {
+    document.getElementById(id).querySelectorAll("button").forEach(function (x) {
+      x.setAttribute("aria-pressed", x.dataset.v === value ? "true" : "false");
+    });
+  }
+  function rows() { return D.comparison[state.season]; }
+  function find(key) { return rows().filter(function (r) { return r.key === key; })[0]; }
+
+  // ---------------- KPI tiles ----------------
+  function renderKpis() {
+    var g = find("greenops_moo"), rr = find("round_robin"), gr = find("greenest_region"), tg = find("temporal_green");
+    var tiles = [
+      ["Carbon vs Round Robin", signed(g.vs_rr), true, fmt(g.carbon, 1) + " kg vs " + fmt(rr.carbon, 1) + " kg per run"],
+      ["Carbon vs Greenest Region", signed(g.vs_green), true, fmt(gr.carbon, 1) + " kg for the greedy policy"],
+      ["SLA violations per run", fmt(g.sla, 2), false, "Temporal Green: " + fmt(tg.sla, 2) + " (300 jobs)"],
+      ["p95 job latency", fmt(g.p95, 1) + " h", false, "Temporal Green: " + fmt(tg.p95, 1) + " h"]
+    ];
+    var box = document.getElementById("kpis");
+    box.innerHTML = "";
+    tiles.forEach(function (t) {
+      var d = document.createElement("div");
+      d.className = "kpi";
+      d.innerHTML = '<span class="label">' + t[0] + '</span><span class="value' + (t[2] ? " good" : "") + '">' + t[1] +
+        '</span><span class="sub">' + t[3] + "</span>";
+      box.appendChild(d);
+    });
+  }
+
+  // ---------------- comparison bars ----------------
+  var METRICS = {
+    carbon: { label: "kg CO₂eq per run", d: 1, unit: " kg" },
+    cost: { label: "$ per run", d: 0, unit: "", prefix: "$" },
+    sla: { label: "late jobs per run (of 300)", d: 2, unit: "" },
+    p95: { label: "hours, 95th percentile", d: 1, unit: " h" }
+  };
+  function renderBars() {
+    var m = METRICS[state.metric], data = rows();
+    var W = 560, rowH = 34, top = 6, labelW = 172, right = 70, H = top + data.length * rowH + 4;
+    var max = Math.max.apply(null, data.map(function (r) { return r[state.metric]; })) || 1;
+    var s = svg(document.getElementById("bars"), W, H, "Bar chart of " + m.label + " per scheduler");
+    var span = W - labelW - right;
+    data.forEach(function (r, i) {
+      var y = top + i * rowH, v = r[state.metric], w = Math.max(2, v / max * span);
+      var ours = r.key === "greenops_moo";
+      el("text", { x: labelW - 10, y: y + rowH / 2 + 4, "text-anchor": "end", "class": ours ? "strong" : "" }, s, r.label);
+      el("rect", { x: labelW, y: y + 7, width: w, height: rowH - 14, rx: 3, style: "fill:" + (ours ? "var(--accent)" : "var(--bar)") }, s);
+      el("text", { x: labelW + w + 6, y: y + rowH / 2 + 4, "class": "num" }, s, (m.prefix || "") + fmt(v, m.d) + m.unit);
+      var hit = el("rect", { x: 0, y: y, width: W, height: rowH, style: "fill:transparent" }, s);
+      hit.addEventListener("mousemove", function (e) {
+        showTip(e, "<b>" + r.label + "</b><br>Carbon " + fmt(r.carbon, 1) + " kg (±" + fmt(r.carbon_sd, 1) + ")<br>Cost $" +
+          fmt(r.cost, 0) + "<br>SLA violations " + fmt(r.sla, 2) + "<br>p95 latency " + fmt(r.p95, 1) + " h<br>vs Round Robin " + signed(r.vs_rr));
+      });
+      hit.addEventListener("mouseleave", hideTip);
+    });
+    document.getElementById("bars-note").textContent =
+      "Mean " + m.label + ", " + (state.season === "both" ? "both seasons" : state.season === "winter_2024" ? "January 2024" : "July 2024") +
+      ". GreenOps is highlighted; hover a row for every metric.";
+  }
+
+  // ---------------- carbon traces ----------------
+  var REGION = [["India", "var(--in)"], ["Germany", "var(--de)"], ["Norway", "var(--no)"]];
+  function renderTraces() {
+    var T = D.traces[state.trace], W = 560, H = 270, L = 42, R = 64, Tp = 10, B = 30;
+    var n = T.India.length, yMax = 850;
+    var x = function (h) { return L + h / (n - 1) * (W - L - R); };
+    var y = function (v) { return Tp + (1 - v / yMax) * (H - Tp - B); };
+    var s = svg(document.getElementById("traces"), W, H, "Hourly carbon intensity for India, Germany and Norway");
+    [0, 200, 400, 600, 800].forEach(function (v) {
+      el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), style: "stroke:var(--line);stroke-width:1" }, s);
+      el("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end" }, s, v);
+    });
+    for (var d = 0; d <= 7; d++) {
+      el("text", { x: x(Math.min(d * 24, n - 1)), y: H - 10, "text-anchor": "middle" }, s, d === 7 ? "7 d" : "Day " + d);
+    }
+    REGION.forEach(function (rg) {
+      var pts = T[rg[0]].map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
+      el("polyline", { points: pts, style: "fill:none;stroke:" + rg[1] + ";stroke-width:2;stroke-linejoin:round" }, s);
+      var last = T[rg[0]][n - 1];
+      el("text", { x: W - R + 6, y: y(last) + 4, "class": "strong" }, s, rg[0]);
+    });
+    var cursor = el("line", { x1: 0, x2: 0, y1: Tp, y2: H - B, style: "stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3", visibility: "hidden" }, s);
+    var hit = el("rect", { x: L, y: Tp, width: W - L - R, height: H - Tp - B, style: "fill:transparent" }, s);
+    hit.addEventListener("mousemove", function (e) {
+      var box = s.getBoundingClientRect();
+      var px = (e.clientX - box.left) / box.width * W;
+      var h = Math.max(0, Math.min(n - 1, Math.round((px - L) / (W - L - R) * (n - 1))));
+      cursor.setAttribute("x1", x(h)); cursor.setAttribute("x2", x(h)); cursor.setAttribute("visibility", "visible");
+      showTip(e, "<b>Day " + Math.floor(h / 24) + ", " + String(h % 24).padStart(2, "0") + ":00 UTC</b><br>" +
+        REGION.map(function (rg) { return rg[0] + ": " + T[rg[0]][h] + " g/kWh"; }).join("<br>"));
+    });
+    hit.addEventListener("mouseleave", function () { cursor.setAttribute("visibility", "hidden"); hideTip(); });
+  }
+
+  // ---------------- replay ----------------
+  var R = D.replay, CLASS = { strict: "var(--strict)", batch: "var(--batch)", flexible: "var(--flex)" };
+  var replayEls = [], cursorEl = null, xScale = null, playing = false, raf = null;
+  var timeInput = document.getElementById("time");
+  timeInput.max = R.horizon;
+
+  (function buildReplayButtons() {
+    var g = document.getElementById("replay-sched");
+    Object.keys(R.runs).forEach(function (key) {
+      var b = document.createElement("button");
+      b.type = "button"; b.id = "replay-" + key; b.dataset.v = key; b.textContent = R.runs[key].label;
+      b.setAttribute("aria-pressed", key === state.sched ? "true" : "false");
+      g.appendChild(b);
+    });
+  })();
+
+  function renderReplay() {
+    var run = R.runs[state.sched], W = 1000, L = 96, Rt = 12, Tp = 8, rowH = 8, gap = 14, axis = 26;
+    var regions = ["India", "Germany", "Norway"];
+    var heights = regions.map(function (r) { return Math.max(3, run.lanes[r].rows) * rowH + 10; });
+    var H = Tp + heights.reduce(function (a, b) { return a + b + gap; }, 0) + axis;
+    var s = svg(document.getElementById("replay"), W, H, "Timeline of jobs per region for " + run.label);
+    var hours = R.intensity.India.length;
+    xScale = function (t) { return L + t / R.horizon * (W - L - Rt); };
+    replayEls = [];
+    var y0 = Tp;
+    regions.forEach(function (region, ri) {
+      var hgt = heights[ri];
+      el("rect", { x: L, y: y0, width: W - L - Rt, height: hgt, style: "fill:var(--bg)" }, s);
+      R.intensity[region].forEach(function (ci, h) {
+        if (h >= R.horizon) return;
+        el("rect", { x: xScale(h), y: y0, width: Math.max(0.5, xScale(Math.min(h + 1, R.horizon)) - xScale(h)), height: hgt,
+          style: "fill:var(--ink);opacity:" + (ci / 850 * 0.2).toFixed(3) }, s);
+      });
+      el("text", { x: L - 10, y: y0 + hgt / 2 + 4, "text-anchor": "end", "class": "strong" }, s, region);
+      run.lanes[region].jobs.forEach(function (j) {
+        var cy = y0 + 5 + j.row * rowH + rowH / 2 - 1;
+        var wait = el("line", { x1: xScale(j.arrival), x2: xScale(j.arrival), y1: cy, y2: cy,
+          style: "stroke:var(--muted);stroke-width:1.2;stroke-dasharray:3 2" }, s);
+        var bar = el("rect", { x: xScale(j.start), y: cy - 3, width: 0, height: 6, rx: 1.5,
+          style: "fill:" + CLASS[j.cls] + (j.late ? ";stroke:var(--late);stroke-width:1.5" : "") }, s);
+        var hit = el("rect", { x: xScale(Math.min(j.arrival, j.start)), y: cy - 4, width: Math.max(4, xScale(j.finish) - xScale(Math.min(j.arrival, j.start))),
+          height: 8, style: "fill:transparent" }, s);
+        hit.addEventListener("mousemove", function (e) {
+          showTip(e, "<b>" + j.id + "</b> (" + j.cls + ", " + j.cpu + " vCPU) in " + region + "<br>Arrived " + fmt(j.arrival, 1) +
+            " h, started " + fmt(j.start, 1) + " h<br>Waited " + fmt(j.start - j.arrival, 1) + " h, finished " + fmt(j.finish, 1) +
+            " h<br>Carbon " + fmt(j.carbon, 0) + " g" + (j.late ? "<br><b>Finished after its deadline</b>" : ""));
+        });
+        hit.addEventListener("mouseleave", hideTip);
+        replayEls.push({ j: j, wait: wait, bar: bar });
+      });
+      y0 += hgt + gap;
+    });
+    for (var d = 0; d * 24 <= R.horizon; d++) {
+      el("text", { x: xScale(d * 24), y: H - 8, "text-anchor": "middle" }, s, "Day " + d);
+    }
+    cursorEl = el("line", { x1: 0, x2: 0, y1: Tp, y2: H - axis, style: "stroke:var(--accent);stroke-width:1.5" }, s);
+    drawTime();
+  }
+
+  function drawTime() {
+    var t = state.t, done = 0, carbon = 0, late = 0, total = replayEls.length;
+    replayEls.forEach(function (o) {
+      var j = o.j;
+      var waitEnd = Math.min(t, j.start);
+      o.wait.setAttribute("x2", xScale(Math.max(j.arrival, waitEnd)));
+      o.wait.setAttribute("visibility", t >= j.arrival && j.start - j.arrival > 0.05 ? "visible" : "hidden");
+      o.bar.setAttribute("width", Math.max(0, xScale(Math.min(t, j.finish)) - xScale(j.start)));
+      if (t >= j.finish) { done++; carbon += j.carbon; if (j.late) late++; }
+    });
+    cursorEl.setAttribute("x1", xScale(t)); cursorEl.setAttribute("x2", xScale(t));
+    timeInput.value = t;
+    document.getElementById("time-out").textContent = "Day " + Math.floor(t / 24) + ", " + fmt(t % 24, 0) + " h";
+    var run = R.runs[state.sched];
+    document.getElementById("stats").innerHTML =
+      "<span>Jobs finished <b>" + done + "</b> / " + total + "</span>" +
+      "<span>Carbon so far <b>" + fmt(carbon / 1000, 1) + " kg</b></span>" +
+      "<span>Late jobs <b>" + late + "</b></span>" +
+      "<span>Full run <b>" + fmt(run.carbon, 1) + " kg</b>, " + run.late + " late</span>";
+  }
+
+  function stop() { playing = false; if (raf) cancelAnimationFrame(raf); document.getElementById("play").textContent = "Play"; }
+  function play() {
+    if (reduceMotion) { state.t = R.horizon; drawTime(); return; }
+    if (state.t >= R.horizon - 0.01) state.t = 0;
+    playing = true;
+    document.getElementById("play").textContent = "Pause";
+    var last = null, speed = R.horizon / 14000;
+    function frame(ts) {
+      if (!playing) return;
+      if (last !== null) state.t = Math.min(R.horizon, state.t + (ts - last) * speed);
+      last = ts;
+      drawTime();
+      if (state.t >= R.horizon) { stop(); return; }
+      raf = requestAnimationFrame(frame);
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  document.getElementById("play").addEventListener("click", function () { playing ? stop() : play(); });
+  timeInput.addEventListener("input", function () { stop(); state.t = parseFloat(timeInput.value); drawTime(); });
+
+  // ---------------- small line charts ----------------
+  function lineChart(id, series, xLabel, xMax, xTicks, yTitle, label) {
+    var W = 520, H = 250, L = 46, Rr = 110, Tp = 12, B = 40;
+    var all = [];
+    series.forEach(function (sr) { sr.points.forEach(function (p) { all.push(p[1]); }); });
+    var lo = Math.floor(Math.min.apply(null, all) - 1), hi = Math.ceil(Math.max.apply(null, all) + 1);
+    var x = function (v) { return L + v / xMax * (W - L - Rr); };
+    var y = function (v) { return Tp + (1 - (v - lo) / (hi - lo)) * (H - Tp - B); };
+    var s = svg(document.getElementById(id), W, H, label);
+    var step = (hi - lo) > 12 ? 4 : 2;
+    for (var v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      el("line", { x1: L, x2: W - Rr, y1: y(v), y2: y(v), style: "stroke:var(--line);stroke-width:1" }, s);
+      el("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end" }, s, v);
+    }
+    xTicks.forEach(function (t) { el("text", { x: x(t), y: H - 22, "text-anchor": "middle" }, s, t); });
+    el("text", { x: L + (W - L - Rr) / 2, y: H - 4, "text-anchor": "middle" }, s, xLabel);
+    el("text", { x: 12, y: Tp + (H - Tp - B) / 2, "text-anchor": "middle", transform: "rotate(-90 12 " + (Tp + (H - Tp - B) / 2) + ")" }, s, yTitle);
+    var labels = [];
+    series.forEach(function (sr) {
+      var pts = sr.points.map(function (p) { return x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1); }).join(" ");
+      el("polyline", { points: pts, style: "fill:none;stroke:" + sr.color + ";stroke-width:2" + (sr.dash ? ";stroke-dasharray:5 4" : "") }, s);
+      sr.points.forEach(function (p) {
+        var c = el("circle", { cx: x(p[0]), cy: y(p[1]), r: 4, style: "fill:" + sr.color + ";stroke:var(--surface);stroke-width:1.5" }, s);
+        c.addEventListener("mousemove", function (e) { showTip(e, "<b>" + sr.name + "</b><br>" + xLabel + ": " + p[0] + "<br>" + fmt(p[1], 1) + " kg per run"); });
+        c.addEventListener("mouseleave", hideTip);
+      });
+      var lastP = sr.points[sr.points.length - 1];
+      labels.push({ y: y(lastP[1]), name: sr.name, color: sr.color });
+    });
+    labels.sort(function (a, b) { return a.y - b.y; });
+    for (var i = 1; i < labels.length; i++) { if (labels[i].y - labels[i - 1].y < 14) labels[i].y = labels[i - 1].y + 14; }
+    labels.forEach(function (lb) { el("text", { x: W - Rr + 8, y: lb.y + 4, "class": "strong" }, s, lb.name); });
+  }
+
+  function renderSensitivity() {
+    var F = D.sensitivity.forecast;
+    lineChart("forecast", [
+      { name: "Temporal Green", points: F["Temporal Green"], color: "var(--tg)" },
+      { name: "GreenOps", points: F["GreenOps"], color: "var(--accent)" },
+      { name: "Greenest Region", points: [[0, F["Greenest Region"][0][1]], [50, F["Greenest Region"][0][1]]], color: "var(--muted)", dash: true }
+    ], "forecast error (%)", 50, [0, 10, 20, 30, 40, 50], "kg CO₂eq per run", "Carbon versus forecast error");
+    var M = D.sensitivity.maxwait;
+    lineChart("maxwait", [
+      { name: "Temporal Green", points: M["Temporal Green"].carbon, color: "var(--tg)" },
+      { name: "GreenOps", points: M["GreenOps"].carbon, color: "var(--accent)" }
+    ], "maximum delay (h)", 24, [0, 4, 8, 12, 18, 24], "kg CO₂eq per run", "Carbon versus maximum allowed delay");
+  }
+
+  // ---------------- wiring ----------------
+  segment("season", "season", function () {
+    if (state.season !== "both") { state.trace = state.season; setPressed("trace-season", state.trace); renderTraces(); }
+    renderKpis(); renderBars();
+  });
+  segment("metric", "metric", renderBars);
+  segment("trace-season", "trace", renderTraces);
+  segment("replay-sched", "sched", function () { stop(); renderReplay(); });
+
+  state.t = R.horizon;
+  renderKpis();
+  renderBars();
+  renderTraces();
+  renderReplay();
+  renderSensitivity();
+})();
+</script>

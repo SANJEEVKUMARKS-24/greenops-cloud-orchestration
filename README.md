@@ -67,7 +67,9 @@ experiments/
   comparison/run_all.py preliminary 5-job comparison
   evaluation.py         experiments E1-E7 (multi-seed, parallel)
   plots.py              figures
-tests/test_greenops.py  34 unit + integration tests
+tests/                  50 unit + integration tests
+demo.py                 one-command live demo (viva)
+docs/dashboard.html     interactive results dashboard (offline)
 notebooks/analysis.ipynb results exploration
 results/evaluation/     all raw runs + summaries (CSV)
 results/figures/        all figures (PNG)
@@ -84,8 +86,14 @@ The virtual environment `greenops_env` already contains every dependency
 # activate (PowerShell)
 .\greenops_env\Scripts\Activate.ps1
 
+# one-command live demo (pauses between steps)
+python demo.py
+
+# interactive dashboard: open docs/dashboard.html in a browser
+# (rebuild it from the results with: python -m experiments.build_dashboard)
+
 # tests
-python -m unittest discover -s tests -v
+python -m unittest discover -s tests -t . -v
 
 # one simulation with decision-by-decision output
 python -m experiments.run_experiment

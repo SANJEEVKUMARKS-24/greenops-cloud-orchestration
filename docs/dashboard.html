@@ -1,0 +1,518 @@
+<title>GreenOps Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column of panels; summary tiles first, then comparison, grid data, replay, sensitivity. */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --ink: #18201b;
+  --muted: #5b655e;
+  --line: #dde3de;
+  --bar: #b9c1bb;
+  --accent: #157a3e;
+  --accent-soft: #e3f1e8;
+  --late: #c0392b;
+  --no: #2a78d6;
+  --de: #eb6834;
+  --in: #1baf7a;
+  --strict: #4a3aa7;
+  --batch: #e87ba4;
+  --flex: #eda100;
+  --tg: #eb6834;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111512; --surface: #1a1f1b; --ink: #eef2ee; --muted: #a2aca4; --line: #2c342e;
+    --bar: #4c5650; --accent: #46c276; --accent-soft: #1d3325; --late: #ef6b5f;
+    --no: #3987e5; --de: #d95926; --in: #199e70; --strict: #9085e9; --batch: #d55181; --flex: #c98500; --tg: #d95926;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111512; --surface: #1a1f1b; --ink: #eef2ee; --muted: #a2aca4; --line: #2c342e;
+  --bar: #4c5650; --accent: #46c276; --accent-soft: #1d3325; --late: #ef6b5f;
+  --no: #3987e5; --de: #d95926; --in: #199e70; --strict: #9085e9; --batch: #d55181; --flex: #c98500; --tg: #d95926;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 28px 48px; display: grid; gap: 20px; }
+
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 2.1rem; line-height: 1.1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
+h2 { font-size: 1.02rem; font-weight: 600; margin: 0; text-wrap: balance; }
+.note { color: var(--muted); font-size: 0.86rem; margin: 0; }
+
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 3px; gap: 2px; }
+.seg button {
+  font: inherit; font-size: 0.86rem; border: 0; background: transparent; color: var(--muted);
+  padding: 5px 11px; border-radius: 6px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+.seg button:focus-visible, .btn:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 2px; min-width: 0; }
+.kpi .label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.kpi .value { font-family: var(--mono); font-size: 1.75rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.kpi .value.good { color: var(--accent); }
+.kpi .sub { font-size: 0.82rem; color: var(--muted); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 14px; display: grid; gap: 12px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.chart { width: 100%; overflow-x: auto; }
+.chart svg { display: block; width: 100%; height: auto; }
+svg text { font-family: var(--body); fill: var(--muted); font-size: 12px; }
+svg .num { font-family: var(--mono); fill: var(--ink); font-size: 12px; }
+svg .strong { fill: var(--ink); font-weight: 600; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.82rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.sw.line { height: 3px; border-radius: 2px; width: 16px; }
+.sw.dash { height: 0; border-top: 2px dashed var(--muted); width: 16px; border-radius: 0; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn { font: inherit; font-weight: 600; font-size: 0.9rem; border: 1px solid var(--accent); background: var(--accent); color: var(--surface); border-radius: 8px; padding: 6px 16px; cursor: pointer; min-width: 84px; }
+.slider { display: flex; align-items: center; gap: 10px; flex: 1 1 240px; min-width: 0; }
+.slider input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.slider output { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
+.stats { display: flex; flex-wrap: wrap; gap: 22px; font-size: 0.88rem; color: var(--muted); }
+.stats b { font-family: var(--mono); font-weight: 500; color: var(--ink); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+#tip {
+  position: absolute; pointer-events: none; background: var(--ink); color: var(--bg);
+  font-size: 0.8rem; line-height: 1.4; padding: 7px 10px; border-radius: 7px; max-width: 260px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); z-index: 20;
+}
+#tip b { font-weight: 600; }
+footer { color: var(--muted); font-size: 0.82rem; max-width: 80ch; }
+footer p { margin: 0 0 6px; }
+
+@media (max-width: 860px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .two { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 1.7rem; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>GreenOps Dashboard</h1>
+      <p class="lede">Carbon-aware scheduling across India, Germany and Norway. Every number comes from our SimPy experiments on real 2024 grid data (300 jobs per run, 20 seeds per season).</p>
+    </div>
+    <div class="seg" role="group" aria-label="Season" id="season">
+      <button type="button" id="season-both" data-v="both" aria-pressed="true">Both seasons</button>
+      <button type="button" id="season-winter" data-v="winter_2024" aria-pressed="false">Winter</button>
+      <button type="button" id="season-summer" data-v="summer_2024" aria-pressed="false">Summer</button>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="GreenOps headline results" id="kpis"></section>
+
+  <div class="two">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Scheduler comparison</h2>
+        <div class="seg" role="group" aria-label="Metric" id="metric">
+          <button type="button" id="metric-carbon" data-v="carbon" aria-pressed="true">Carbon</button>
+          <button type="button" id="metric-cost" data-v="cost" aria-pressed="false">Cost</button>
+          <button type="button" id="metric-sla" data-v="sla" aria-pressed="false">SLA</button>
+          <button type="button" id="metric-p95" data-v="p95" aria-pressed="false">p95 latency</button>
+        </div>
+      </div>
+      <div class="chart" id="bars"></div>
+      <p class="note" id="bars-note"></p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Grid carbon intensity, first week</h2>
+        <div class="seg" role="group" aria-label="Trace season" id="trace-season">
+          <button type="button" id="trace-winter" data-v="winter_2024" aria-pressed="true">Jan 2024</button>
+          <button type="button" id="trace-summer" data-v="summer_2024" aria-pressed="false">Jul 2024</button>
+        </div>
+      </div>
+      <div class="chart" id="traces"></div>
+      <div class="legend">
+        <span><i class="sw line" style="background:var(--in)"></i>India (modelled)</span>
+        <span><i class="sw line" style="background:var(--de)"></i>Germany</span>
+        <span><i class="sw line" style="background:var(--no)"></i>Norway</span>
+        <span>gCO₂eq per kWh, UTC</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Replay a simulation</h2>
+      <div class="seg" role="group" aria-label="Scheduler to replay" id="replay-sched"></div>
+    </div>
+    <p class="note">100 jobs on the January trace with 15 % forecast error. Each bar is a job running in a region; a dashed line is a job waiting for a cleaner hour or for capacity. Lane shading is the grid's carbon intensity: stronger shading means dirtier electricity.</p>
+    <div class="controls">
+      <button type="button" class="btn" id="play">Play</button>
+      <div class="slider">
+        <label for="time" class="note">Time</label>
+        <input type="range" id="time" min="0" max="100" step="0.1" value="100">
+        <output id="time-out" for="time">0 h</output>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="chart" id="replay"></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--strict)"></i>Strict (never delayed)</span>
+      <span><i class="sw" style="background:var(--batch)"></i>Batch</span>
+      <span><i class="sw" style="background:var(--flex)"></i>Flexible</span>
+      <span><i class="sw dash"></i>Waiting</span>
+      <span><i class="sw" style="background:transparent;border:2px solid var(--late)"></i>Finished late</span>
+    </div>
+  </section>
+
+  <div class="two">
+    <section class="panel">
+      <h2>When carbon forecasts are wrong</h2>
+      <div class="chart" id="forecast"></div>
+      <p class="note">Carbon per run as forecast error grows. Temporal Green trusts the forecast blindly; GreenOps re-plans every hour and degrades less. From 30 % error onward it is the greener of the two.</p>
+    </section>
+    <section class="panel">
+      <h2>How long is it worth waiting?</h2>
+      <div class="chart" id="maxwait"></div>
+      <p class="note">Carbon per run against the longest allowed delay. Almost all of GreenOps' gain arrives within 2 hours; longer waits mostly add latency.</p>
+    </section>
+  </div>
+
+  <footer>
+    <p><b>Data.</b> Germany and Norway: Energy-Charts generation mix with IPCC AR5 emission factors. India: modelled from CEA figures. Forecast error calibrated on National Grid ESO forecasts. Prices, power and PUE are representative assumptions.</p>
+    <p><b>Method.</b> Discrete-event simulation (SimPy). Comparison values are means over 20 random seeds per season; the replay is one run. Regenerate with <code>python -m experiments.build_dashboard</code>.</p>
+    <p>Mohammed Faheem K · Nithish Kumar · Sanjeev Kumar · VIT Vellore</p>
+  </footer>
+</div>
+
+<div id="tip" hidden></div>
+
+<script type="application/json" id="data">{"comparison":{"both":[{"key":"cost_only","label":"Cost Only","carbon":119.59,"carbon_sd":8.93,"cost":384.4,"sla":0.15,"p95":6.0,"latency":3.27,"vs_rr":22.2,"vs_green":58.1},{"key":"round_robin","label":"Round Robin","carbon":98.07,"carbon_sd":8.96,"cost":416.6,"sla":0.15,"p95":6.0,"latency":3.25,"vs_rr":0.0,"vs_green":29.4},{"key":"greenest_region","label":"Greenest Region","carbon":75.99,"carbon_sd":8.31,"cost":451.7,"sla":0.2,"p95":6.0,"latency":3.23,"vs_rr":-22.6,"vs_green":0.0},{"key":"greenops_spatial","label":"GreenOps (spatial only)","carbon":76.41,"carbon_sd":8.27,"cost":450.4,"sla":0.2,"p95":6.0,"latency":3.23,"vs_rr":-22.2,"vs_green":0.6},{"key":"greenops_pareto","label":"GreenOps Pareto","carbon":79.58,"carbon_sd":8.97,"cost":434.3,"sla":3.05,"p95":12.76,"latency":4.86,"vs_rr":-19.0,"vs_green":4.7},{"key":"temporal_green","label":"Temporal Green","carbon":71.1,"carbon_sd":9.28,"cost":453.7,"sla":2.8,"p95":15.01,"latency":6.34,"vs_rr":-27.7,"vs_green":-6.6},{"key":"greenops_moo","label":"GreenOps","carbon":71.96,"carbon_sd":8.85,"cost":454.6,"sla":0.28,"p95":7.26,"latency":3.67,"vs_rr":-26.8,"vs_green":-5.4}],"winter_2024":[{"key":"cost_only","label":"Cost Only","carbon":126.93,"carbon_sd":5.17,"cost":384.4,"sla":0.15,"p95":6.0,"latency":3.27,"vs_rr":21.5,"vs_green":56.6},{"key":"round_robin","label":"Round Robin","carbon":104.58,"carbon_sd":6.39,"cost":416.6,"sla":0.15,"p95":6.0,"latency":3.25,"vs_rr":0.0,"vs_green":28.7},{"key":"greenest_region","label":"Greenest Region","carbon":81.41,"carbon_sd":6.66,"cost":451.7,"sla":0.2,"p95":6.0,"latency":3.23,"vs_rr":-22.2,"vs_green":0.0},{"key":"greenops_spatial","label":"GreenOps (spatial only)","carbon":81.74,"carbon_sd":6.6,"cost":450.8,"sla":0.2,"p95":6.0,"latency":3.23,"vs_rr":-21.9,"vs_green":0.4},{"key":"greenops_pareto","label":"GreenOps Pareto","carbon":86.32,"carbon_sd":6.31,"cost":435.7,"sla":2.65,"p95":12.41,"latency":4.67,"vs_rr":-17.5,"vs_green":6.1},{"key":"temporal_green","label":"Temporal Green","carbon":77.95,"carbon_sd":6.35,"cost":453.6,"sla":2.7,"p95":15.01,"latency":6.35,"vs_rr":-25.5,"vs_green":-4.2},{"key":"greenops_moo","label":"GreenOps","carbon":78.09,"carbon_sd":6.81,"cost":455.0,"sla":0.25,"p95":6.51,"latency":3.54,"vs_rr":-25.4,"vs_green":-4.1}],"summer_2024":[{"key":"cost_only","label":"Cost Only","carbon":112.25,"carbon_sd":4.85,"cost":384.4,"sla":0.15,"p95":6.0,"latency":3.27,"vs_rr":22.8,"vs_green":59.7},{"key":"round_robin","label":"Round Robin","carbon":91.57,"carbon_sd":5.92,"cost":416.6,"sla":0.15,"p95":6.0,"latency":3.25,"vs_rr":0.0,"vs_green":30.0},{"key":"greenest_region","label":"Greenest Region","carbon":70.58,"carbon_sd":5.96,"cost":451.7,"sla":0.2,"p95":6.0,"latency":3.23,"vs_rr":-23.0,"vs_green":0.0},{"key":"greenops_spatial","label":"GreenOps (spatial only)","carbon":71.07,"carbon_sd":6.06,"cost":450.1,"sla":0.2,"p95":6.0,"latency":3.23,"vs_rr":-22.4,"vs_green":0.7},{"key":"greenops_pareto","label":"GreenOps Pareto","carbon":72.83,"carbon_sd":5.45,"cost":432.8,"sla":3.45,"p95":13.11,"latency":5.05,"vs_rr":-20.5,"vs_green":3.3},{"key":"temporal_green","label":"Temporal Green","carbon":64.25,"carbon_sd":6.15,"cost":453.7,"sla":2.9,"p95":15.01,"latency":6.33,"vs_rr":-29.9,"vs_green":-9.0},{"key":"greenops_moo","label":"GreenOps","carbon":65.84,"carbon_sd":5.96,"cost":454.2,"sla":0.3,"p95":8.02,"latency":3.81,"vs_rr":-28.2,"vs_green":-6.7}]},"traces":{"winter_2024":{"India":[716,722,715,702,675,655,656,655,676,694,716,730,715,742,763,775,741,703,685,679,690,694,705,698,705,712,700,718,710,705,674,653,655,671,699,717,721,721,731,758,739,730,727,700,704,725,695,694,696,687,695,689,656,654,649,656,683,701,718,711,731,734,743,733,716,699,713,681,665,677,704,715,688,655,666,654,631,635,639,637,649,674,716,737,752,768,756,781,784,772,728,714,727,700,700,718,699,724,727,715,704,692,673,680,673,681,714,727,724,750,784,780,749,733,721,713,734,717,736,715,690,700,713,715,702,681,662,660,661,679,704,715,735,752,792,795,774,749,734,739,729,731,754,710,692,697,700,695,674,664,650,634,676,693,699,710,716,727,702,707,720,691,685,698,711,732,703,698],"Germany":[356,346,340,349,383,423,437,435,418,406,397,390,396,411,434,442,426,421,435,447,457,468,472,480,483,490,494,507,516,519,527,512,483,468,466,468,476,501,532,524,507,502,516,535,545,552,559,564,574,577,579,580,580,566,542,537,530,521,509,510,525,555,594,598,577,574,585,612,634,644,647,645,642,635,631,625,613,599,588,563,542,524,511,508,527,553,584,591,576,587,610,631,642,646,642,641,645,645,650,637,626,607,592,565,553,546,537,534,528,521,534,535,527,526,538,537,522,512,491,484,467,458,436,417,412,415,408,394,375,364,353,347,353,351,348,348,343,342,348,356,362,361,349,338,334,331,327,329,336,349,360,366,366,352,328,326,334,342,364,367,362,345,339,335,324,320,311,299],"Norway":[28,28,29,29,28,28,28,27,27,27,27,27,27,27,27,27,27,27,27,27,27,27,27,27,27,28,28,28,28,28,27,27,27,27,27,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,27,27,27,27,27,27,27,27,27,27,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,27,28,27,27,27,27,27,27,27,28,28,28,28,28,28,28,28,27,27,27,27,27,27,27,27,27,27,27,27,27,27,27,28,28,28,27,27,28,28,28,28,27,27,27,27,27,27,28,28,28,28,28,28,28,29,29,29,29,30,29,30,30,30,30,29,29,28,28,28,28,28,29,28,28,28,28,28,28,28,28,29,29,30]},"summer_2024":{"India":[646,652,643,629,599,574,569,565,587,609,636,654,643,669,689,700,669,635,618,613,623,626,637,630,637,642,630,643,631,619,585,564,568,588,621,643,649,650,659,685,667,659,656,632,636,655,628,627,629,619,625,617,582,573,562,567,593,616,638,637,658,662,671,662,646,631,644,614,601,611,636,645,621,591,599,586,560,556,554,549,563,591,636,660,677,693,682,705,708,697,657,644,656,632,632,648,631,653,655,640,625,607,584,588,584,598,635,651,651,677,708,704,676,662,651,643,663,647,664,645,622,631,642,641,623,598,575,570,573,596,625,641,662,679,714,718,699,676,663,667,658,660,681,641,625,628,630,622,598,583,563,546,587,609,621,636,645,656,634,639,650,624,618,630,642,661,635,631],"Germany":[542,558,560,553,477,420,400,367,339,294,264,232,209,224,261,298,332,372,396,426,444,467,465,451,444,445,448,455,427,388,355,324,290,278,285,273,258,261,273,301,338,370,386,405,423,438,439,439,441,442,447,465,454,409,387,359,327,300,293,298,317,342,363,389,404,426,451,462,447,384,293,235,216,218,216,198,189,174,165,153,143,139,139,138,142,141,144,152,170,196,217,228,229,214,211,222,229,229,231,223,208,197,176,156,139,134,132,130,132,137,152,174,204,243,286,307,314,316,323,293,257,244,229,206,179,163,149,142,134,131,131,135,144,145,142,143,151,167,174,183,197,212,201,194,187,194,198,199,198,191,175,164,156,151,148,151,157,163,176,198,266,369,434,455,470,513,523,498],"Norway":[30,30,30,30,30,29,29,29,29,29,29,29,29,30,29,28,28,28,28,28,28,29,29,29,29,29,29,29,29,28,28,28,28,28,28,28,28,29,29,29,29,29,29,29,29,29,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,31,31,30,30,30,30,30,30,30,31,32,33,33,33,33,32,32,31,32,33,33,34,33,33,33,32,32,32,31,30,30,30,30,32,33,33,34,34,34,33,31,31,33,33,33,33,34,34,33,32,32,31,31,30,31,31,31,31,31,31,32,32,34,34,35,36,36,36,36,36,36,36,36,36,35,35,34,35,35,35,36,37,36,36,36,35,35,35,35,35,35,35,36,35,35,35,34,32,32,31,30,30,30,30,30,30,31]}},"replay":{"runs":{"round_robin":{"label":"Round Robin","lanes":{"India":{"rows":4,"jobs":[{"id":"J0001","cls":"batch","arrival":0.0,"start":0.0,"finish":4.0,"carbon":314.1,"late":false,"cpu":2,"row":0},{"id":"J0002","cls":"batch","arrival":3.0,"start":3.0,"finish":8.0,"carbon":367.7,"late":false,"cpu":2,"row":1},{"id":"J0004","cls":"flexible","arrival":3.0,"start":4.0,"finish":9.0,"carbon":1459.3,"late":false,"cpu":8,"row":2},{"id":"J0006","cls":"batch","arrival":4.0,"start":4.0,"finish":10.0,"carbon":1102.9,"late":false,"cpu":5,"row":0},{"id":"J0003","cls":"batch","arrival":3.0,"start":8.0,"finish":14.0,"carbon":704.9,"late":false,"cpu":3,"row":3},{"id":"J0008","cls":"flexible","arrival":9.0,"start":9.0,"finish":14.0,"carbon":988.9,"late":false,"cpu":5,"row":1},{"id":"J0011","cls":"flexible","arrival":13.0,"start":14.0,"finish":18.0,"carbon":328.1,"late":false,"cpu":2,"row":0},{"id":"J0013","cls":"strict","arrival":16.0,"start":16.0,"finish":19.0,"carbon":351.3,"late":false,"cpu":3,"row":1},{"id":"J0015","cls":"batch","arrival":21.0,"start":21.0,"finish":27.0,"carbon":1158.9,"late":false,"cpu":5,"row":0},{"id":"J0018","cls":"batch","arrival":22.0,"start":22.0,"finish":28.0,"carbon":1631.9,"late":false,"cpu":7,"row":1},{"id":"J0019","cls":"strict","arrival":25.0,"start":25.0,"finish":27.0,"carbon":77.6,"late":false,"cpu":1,"row":2},{"id":"J0021","cls":"strict","arrival":28.0,"start":28.0,"finish":31.0,"carbon":114.9,"late":false,"cpu":1,"row":0},{"id":"J0022","cls":"batch","arrival":29.0,"start":29.0,"finish":34.0,"carbon":1477.5,"late":false,"cpu":8,"row":1},{"id":"J0025","cls":"batch","arrival":31.0,"start":31.0,"finish":35.0,"carbon":294.6,"late":false,"cpu":2,"row":0},{"id":"J0026","cls":"batch","arrival":32.0,"start":34.0,"finish":40.0,"carbon":1674.0,"late":false,"cpu":7,"row":2},{"id":"J0029","cls":"strict","arrival":35.0,"start":35.0,"finish":36.0,"carbon":78.9,"late":false,"cpu":2,"row":0},{"id":"J0030","cls":"strict","arrival":37.0,"start":37.0,"finish":40.0,"carbon":121.6,"late":false,"cpu":1,"row":0},{"id":"J0031","cls":"flexible","arrival":38.0,"start":38.0,"finish":41.0,"carbon":612.8,"late":false,"cpu":5,"row":1},{"id":"J0033","cls":"flexible","arrival":41.0,"start":41.0,"finish":45.0,"carbon":944.5,"late":false,"cpu":6,"row":0},{"id":"J0034","cls":"flexible","arrival":42.0,"start":42.0,"finish":44.0,"carbon":157.0,"late":false,"cpu":2,"row":1},{"id":"J0035","cls":"flexible","arrival":43.0,"start":43.0,"finish":49.0,"carbon":1391.3,"late":false,"cpu":6,"row":2},{"id":"J0036","cls":"batch","arrival":44.0,"start":44.0,"finish":48.0,"carbon":620.3,"late":false,"cpu":4,"row":1},{"id":"J0038","cls":"strict","arrival":46.0,"start":46.0,"finish":48.0,"carbon":229.3,"late":false,"cpu":3,"row":0},{"id":"J0039","cls":"strict","arrival":48.0,"start":48.0,"finish":51.0,"carbon":342.9,"late":false,"cpu":3,"row":0},{"id":"J0041","cls":"strict","arrival":49.0,"start":49.0,"finish":52.0,"carbon":341.6,"late":false,"cpu":3,"row":1},{"id":"J0043","cls":"batch","arrival":50.0,"start":50.0,"finish":56.0,"carbon":1539.3,"late":false,"cpu":7,"row":2},{"id":"J0046","cls":"batch","arrival":57.0,"start":57.0,"finish":60.0,"carbon":702.9,"late":false,"cpu":6,"row":0},{"id":"J0047","cls":"flexible","arrival":60.0,"start":60.0,"finish":64.0,"carbon":323.6,"late":false,"cpu":2,"row":0},{"id":"J0048","cls":"flexible","arrival":61.0,"start":61.0,"finish":63.0,"carbon":650.0,"late":false,"cpu":8,"row":1},{"id":"J0049","cls":"strict","arrival":63.0,"start":63.0,"finish":65.0,"carbon":318.7,"late":false,"cpu":4,"row":1},{"id":"J0052","cls":"strict","arrival":67.0,"start":67.0,"finish":69.0,"carbon":222.1,"late":false,"cpu":3,"row":0},{"id":"J0053","cls":"strict","arrival":69.0,"start":69.0,"finish":72.0,"carbon":345.9,"late":false,"cpu":3,"row":0},{"id":"J0055","cls":"flexible","arrival":73.0,"start":73.0,"finish":77.0,"carbon":1003.7,"late":false,"cpu":7,"row":0},{"id":"J0057","cls":"flexible","arrival":76.0,"start":76.0,"finish":82.0,"carbon":850.5,"late":false,"cpu":4,"row":1},{"id":"J0061","cls":"strict","arrival":86.0,"start":86.0,"finish":88.0,"carbon":84.5,"late":false,"cpu":1,"row":0},{"id":"J0064","cls":"batch","arrival":89.0,"start":89.0,"finish":94.0,"carbon":800.9,"late":false,"cpu":4,"row":0},{"id":"J0065","cls":"batch","arrival":92.0,"start":92.0,"finish":97.0,"carbon":974.3,"late":false,"cpu":5,"row":1},{"id":"J0067","cls":"strict","arrival":95.0,"start":95.0,"finish":96.0,"carbon":39.5,"late":false,"cpu":1,"row":0},{"id":"J0068","cls":"strict","arrival":96.0,"start":96.0,"finish":98.0,"carbon":234.7,"late":false,"cpu":3,"row":0},{"id":"J0076","cls":"strict","arrival":107.0,"start":107.0,"finish":108.0,"carbon":80.0,"late":false,"cpu":2,"row":0},{"id":"J0079","cls":"strict","arrival":113.0,"start":113.0,"finish":116.0,"carbon":238.4,"late":false,"cpu":2,"row":0},{"id":"J0083","cls":"flexible","arrival":119.0,"start":119.0,"finish":125.0,"carbon":1863.1,"late":false,"cpu":8,"row":0},{"id":"J0084","cls":"flexible","arrival":120.0,"start":120.0,"finish":125.0,"carbon":967.8,"late":false,"cpu":5,"row":1},{"id":"J0085","cls":"strict","arrival":121.0,"start":121.0,"finish":123.0,"carbon":233.1,"late":false,"cpu":3,"row":2},{"id":"J0089","cls":"batch","arrival":129.0,"start":129.0,"finish":134.0,"carbon":788.8,"late":false,"cpu":4,"row":0},{"id":"J0093","cls":"strict","arrival":137.0,"start":137.0,"finish":138.0,"carbon":164.7,"late":false,"cpu":4,"row":0},{"id":"J0094","cls":"strict","arrival":137.0,"start":137.0,"finish":138.0,"carbon":164.7,"late":false,"cpu":4,"row":1},{"id":"J0097","cls":"strict","arrival":142.0,"start":142.0,"finish":145.0,"carbon":474.3,"late":false,"cpu":4,"row":0},{"id":"J0099","cls":"strict","arrival":144.0,"start":144.0,"finish":145.0,"carbon":152.3,"late":false,"cpu":4,"row":1}]},"Germany":{"rows":2,"jobs":[{"id":"J0005","cls":"flexible","arrival":3.0,"start":3.0,"finish":7.0,"carbon":323.3,"late":false,"cpu":5,"row":0},{"id":"J0007","cls":"flexible","arrival":6.0,"start":6.0,"finish":8.0,"carbon":248.0,"late":false,"cpu":7,"row":1},{"id":"J0009","cls":"batch","arrival":11.0,"start":11.0,"finish":13.0,"carbon":223.3,"late":false,"cpu":7,"row":0},{"id":"J0014","cls":"strict","arrival":19.0,"start":19.0,"finish":20.0,"carbon":72.6,"late":false,"cpu":4,"row":0},{"id":"J0016","cls":"flexible","arrival":21.0,"start":21.0,"finish":27.0,"carbon":821.1,"late":false,"cpu":7,"row":0},{"id":"J0017","cls":"strict","arrival":22.0,"start":22.0,"finish":25.0,"carbon":58.3,"late":false,"cpu":1,"row":1},{"id":"J0023","cls":"batch","arrival":31.0,"start":31.0,"finish":35.0,"carbon":391.7,"late":false,"cpu":5,"row":0},{"id":"J0027","cls":"batch","arrival":32.0,"start":32.0,"finish":36.0,"carbon":535.9,"late":false,"cpu":7,"row":1},{"id":"J0032","cls":"strict","arrival":39.0,"start":39.0,"finish":41.0,"carbon":167.5,"late":false,"cpu":4,"row":0},{"id":"J0037","cls":"batch","arrival":45.0,"start":45.0,"finish":47.0,"carbon":361.1,"late":false,"cpu":8,"row":0},{"id":"J0040","cls":"flexible","arrival":48.0,"start":48.0,"finish":50.0,"carbon":140.3,"late":false,"cpu":3,"row":0},{"id":"J0042","cls":"flexible","arrival":49.0,"start":49.0,"finish":53.0,"carbon":658.9,"late":false,"cpu":7,"row":1},{"id":"J0044","cls":"strict","arrival":53.0,"start":53.0,"finish":54.0,"carbon":46.0,"late":false,"cpu":2,"row":0},{"id":"J0050","cls":"strict","arrival":64.0,"start":64.0,"finish":66.0,"carbon":46.7,"late":false,"cpu":1,"row":0},{"id":"J0051","cls":"flexible","arrival":65.0,"start":65.0,"finish":69.0,"carbon":195.3,"late":false,"cpu":2,"row":1},{"id":"J0054","cls":"batch","arrival":71.0,"start":71.0,"finish":74.0,"carbon":546.7,"late":false,"cpu":7,"row":0},{"id":"J0056","cls":"batch","arrival":74.0,"start":74.0,"finish":79.0,"carbon":372.5,"late":false,"cpu":3,"row":0},{"id":"J0058","cls":"flexible","arrival":78.0,"start":78.0,"finish":83.0,"carbon":443.5,"late":false,"cpu":4,"row":1},{"id":"J0062","cls":"strict","arrival":86.0,"start":86.0,"finish":87.0,"carbon":23.7,"late":false,"cpu":1,"row":0},{"id":"J0063","cls":"batch","arrival":87.0,"start":87.0,"finish":89.0,"carbon":284.3,"late":false,"cpu":6,"row":0},{"id":"J0066","cls":"batch","arrival":94.0,"start":94.0,"finish":97.0,"carbon":469.9,"late":false,"cpu":6,"row":0},{"id":"J0069","cls":"strict","arrival":98.0,"start":98.0,"finish":101.0,"carbon":77.7,"late":false,"cpu":1,"row":0},{"id":"J0070","cls":"strict","arrival":99.0,"start":99.0,"finish":102.0,"carbon":303.8,"late":false,"cpu":4,"row":1},{"id":"J0072","cls":"strict","arrival":102.0,"start":102.0,"finish":105.0,"carbon":69.5,"late":false,"cpu":1,"row":0},{"id":"J0075","cls":"strict","arrival":107.0,"start":107.0,"finish":108.0,"carbon":43.4,"late":false,"cpu":2,"row":0},{"id":"J0077","cls":"strict","arrival":109.0,"start":109.0,"finish":112.0,"carbon":193.8,"late":false,"cpu":3,"row":0},{"id":"J0078","cls":"strict","arrival":111.0,"start":111.0,"finish":114.0,"carbon":193.4,"late":false,"cpu":3,"row":1},{"id":"J0080","cls":"strict","arrival":116.0,"start":116.0,"finish":119.0,"carbon":62.0,"late":false,"cpu":1,"row":0},{"id":"J0082","cls":"flexible","arrival":118.0,"start":118.0,"finish":124.0,"carbon":559.2,"late":false,"cpu":5,"row":1},{"id":"J0086","cls":"flexible","arrival":123.0,"start":123.0,"finish":125.0,"carbon":201.9,"late":false,"cpu":6,"row":0},{"id":"J0087","cls":"flexible","arrival":125.0,"start":125.0,"finish":130.0,"carbon":556.3,"late":false,"cpu":7,"row":0},{"id":"J0088","cls":"strict","arrival":127.0,"start":127.0,"finish":130.0,"carbon":138.2,"late":false,"cpu":3,"row":1},{"id":"J0092","cls":"strict","arrival":134.0,"start":134.0,"finish":135.0,"carbon":28.3,"late":false,"cpu":2,"row":0},{"id":"J0095","cls":"batch","arrival":138.0,"start":138.0,"finish":142.0,"carbon":464.1,"late":false,"cpu":8,"row":0},{"id":"J0096","cls":"flexible","arrival":140.0,"start":140.0,"finish":143.0,"carbon":348.7,"late":false,"cpu":8,"row":1},{"id":"J0100","cls":"flexible","arrival":144.0,"start":144.0,"finish":150.0,"carbon":244.5,"late":false,"cpu":3,"row":0}]},"Norway":{"rows":3,"jobs":[{"id":"J0010","cls":"strict","arrival":12.0,"start":12.0,"finish":15.0,"carbon":7.4,"late":false,"cpu":3,"row":0},{"id":"J0012","cls":"flexible","arrival":16.0,"start":16.0,"finish":21.0,"carbon":16.4,"late":false,"cpu":4,"row":0},{"id":"J0020","cls":"flexible","arrival":27.0,"start":27.0,"finish":29.0,"carbon":6.7,"late":false,"cpu":4,"row":0},{"id":"J0024","cls":"strict","arrival":31.0,"start":31.0,"finish":34.0,"carbon":2.5,"late":false,"cpu":1,"row":0},{"id":"J0028","cls":"strict","arrival":34.0,"start":34.0,"finish":36.0,"carbon":1.7,"late":false,"cpu":1,"row":0},{"id":"J0045","cls":"strict","arrival":54.0,"start":54.0,"finish":55.0,"carbon":0.8,"late":false,"cpu":1,"row":0},{"id":"J0059","cls":"flexible","arrival":81.0,"start":81.0,"finish":83.0,"carbon":11.7,"late":false,"cpu":7,"row":0},{"id":"J0060","cls":"strict","arrival":83.0,"start":83.0,"finish":85.0,"carbon":3.3,"late":false,"cpu":2,"row":0},{"id":"J0071","cls":"batch","arrival":100.0,"start":100.0,"finish":105.0,"carbon":29.0,"late":false,"cpu":7,"row":0},{"id":"J0073","cls":"flexible","arrival":103.0,"start":103.0,"finish":107.0,"carbon":13.1,"late":false,"cpu":4,"row":1},{"id":"J0074","cls":"flexible","arrival":104.0,"start":105.0,"finish":109.0,"carbon":26.2,"late":false,"cpu":8,"row":2},{"id":"J0081","cls":"batch","arrival":116.0,"start":116.0,"finish":118.0,"carbon":8.2,"late":false,"cpu":5,"row":0},{"id":"J0090","cls":"batch","arrival":130.0,"start":130.0,"finish":133.0,"carbon":17.3,"late":false,"cpu":7,"row":0},{"id":"J0091","cls":"batch","arrival":133.0,"start":133.0,"finish":137.0,"carbon":20.0,"late":false,"cpu":6,"row":0},{"id":"J0098","cls":"flexible","arrival":143.0,"start":143.0,"finish":145.0,"carbon":5.3,"late":false,"cpu":3,"row":0}]}},"carbon":40.19,"late":0},"cost_only":{"label":"Cost Only","lanes":{"India":{"rows":4,"jobs":[{"id":"J0001","cls":"batch","arrival":0.0,"start":0.0,"finish":4.0,"carbon":314.1,"late":false,"cpu":2,"row":0},{"id":"J0002","cls":"batch","arrival":3.0,"start":3.0,"finish":8.0,"carbon":367.7,"late":false,"cpu":2,"row":1},{"id":"J0004","cls":"flexible","arrival":3.0,"start":4.0,"finish":9.0,"carbon":1459.3,"late":false,"cpu":8,"row":2},{"id":"J0006","cls":"batch","arrival":4.0,"start":4.0,"finish":10.0,"carbon":1102.9,"late":false,"cpu":5,"row":0},{"id":"J0003","cls":"batch","arrival":3.0,"start":8.0,"finish":14.0,"carbon":704.9,"late":false,"cpu":3,"row":3},{"id":"J0008","cls":"flexible","arrival":9.0,"start":9.0,"finish":14.0,"carbon":988.9,"late":false,"cpu":5,"row":1},{"id":"J0011","cls":"flexible","arrival":13.0,"start":14.0,"finish":18.0,"carbon":328.1,"late":false,"cpu":2,"row":0},{"id":"J0013","cls":"strict","arrival":16.0,"start":16.0,"finish":19.0,"carbon":351.3,"late":false,"cpu":3,"row":1},{"id":"J0012","cls":"flexible","arrival":16.0,"start":16.0,"finish":21.0,"carbon":769.7,"late":false,"cpu":4,"row":2},{"id":"J0014","cls":"strict","arrival":19.0,"start":19.0,"finish":20.0,"carbon":149.5,"late":false,"cpu":4,"row":0},{"id":"J0015","cls":"batch","arrival":21.0,"start":21.0,"finish":27.0,"carbon":1158.9,"late":false,"cpu":5,"row":0},{"id":"J0016","cls":"flexible","arrival":21.0,"start":21.0,"finish":27.0,"carbon":1622.4,"late":false,"cpu":7,"row":1},{"id":"J0019","cls":"strict","arrival":25.0,"start":25.0,"finish":27.0,"carbon":77.6,"late":false,"cpu":1,"row":2},{"id":"J0018","cls":"batch","arrival":22.0,"start":27.0,"finish":33.0,"carbon":1584.5,"late":false,"cpu":7,"row":3},{"id":"J0021","cls":"strict","arrival":28.0,"start":28.0,"finish":31.0,"carbon":114.9,"late":false,"cpu":1,"row":0},{"id":"J0022","cls":"batch","arrival":29.0,"start":29.0,"finish":34.0,"carbon":1477.5,"late":false,"cpu":8,"row":1},{"id":"J0026","cls":"batch","arrival":32.0,"start":33.0,"finish":39.0,"carbon":1640.2,"late":false,"cpu":7,"row":0},{"id":"J0028","cls":"strict","arrival":34.0,"start":34.0,"finish":36.0,"carbon":77.9,"late":false,"cpu":1,"row":1},{"id":"J0029","cls":"strict","arrival":35.0,"start":35.0,"finish":36.0,"carbon":78.9,"late":false,"cpu":2,"row":2},{"id":"J0030","cls":"strict","arrival":37.0,"start":37.0,"finish":40.0,"carbon":121.6,"late":false,"cpu":1,"row":1},{"id":"J0031","cls":"flexible","arrival":38.0,"start":38.0,"finish":41.0,"carbon":612.8,"late":false,"cpu":5,"row":2},{"id":"J0033","cls":"flexible","arrival":41.0,"start":41.0,"finish":45.0,"carbon":944.5,"late":false,"cpu":6,"row":0},{"id":"J0034","cls":"flexible","arrival":42.0,"start":42.0,"finish":44.0,"carbon":157.0,"late":false,"cpu":2,"row":1},{"id":"J0035","cls":"flexible","arrival":43.0,"start":43.0,"finish":49.0,"carbon":1391.3,"late":false,"cpu":6,"row":2},{"id":"J0036","cls":"batch","arrival":44.0,"start":44.0,"finish":48.0,"carbon":620.3,"late":false,"cpu":4,"row":1},{"id":"J0038","cls":"strict","arrival":46.0,"start":46.0,"finish":48.0,"carbon":229.3,"late":false,"cpu":3,"row":0},{"id":"J0039","cls":"strict","arrival":48.0,"start":48.0,"finish":51.0,"carbon":342.9,"late":false,"cpu":3,"row":0},{"id":"J0041","cls":"strict","arrival":49.0,"start":49.0,"finish":52.0,"carbon":341.6,"late":false,"cpu":3,"row":1},{"id":"J0043","cls":"batch","arrival":50.0,"start":50.0,"finish":56.0,"carbon":1539.3,"late":false,"cpu":7,"row":2},{"id":"J0044","cls":"strict","arrival":53.0,"start":53.0,"finish":54.0,"carbon":71.9,"late":false,"cpu":2,"row":0},{"id":"J0045","cls":"strict","arrival":54.0,"start":54.0,"finish":55.0,"carbon":35.7,"late":false,"cpu":1,"row":0},{"id":"J0046","cls":"batch","arrival":57.0,"start":57.0,"finish":60.0,"carbon":702.9,"late":false,"cpu":6,"row":0},{"id":"J0047","cls":"flexible","arrival":60.0,"start":60.0,"finish":64.0,"carbon":323.6,"late":false,"cpu":2,"row":0},{"id":"J0048","cls":"flexible","arrival":61.0,"start":61.0,"finish":63.0,"carbon":650.0,"late":false,"cpu":8,"row":1},{"id":"J0049","cls":"strict","arrival":63.0,"start":63.0,"finish":65.0,"carbon":318.7,"late":false,"cpu":4,"row":1},{"id":"J0050","cls":"strict","arrival":64.0,"start":64.0,"finish":66.0,"carbon":77.8,"late":false,"cpu":1,"row":0},{"id":"J0052","cls":"strict","arrival":67.0,"start":67.0,"finish":69.0,"carbon":222.1,"late":false,"cpu":3,"row":0},{"id":"J0053","cls":"strict","arrival":69.0,"start":69.0,"finish":72.0,"carbon":345.9,"late":false,"cpu":3,"row":0},{"id":"J0054","cls":"batch","arrival":71.0,"start":71.0,"finish":74.0,"carbon":792.3,"late":false,"cpu":7,"row":1},{"id":"J0055","cls":"flexible","arrival":73.0,"start":73.0,"finish":77.0,"carbon":1003.7,"late":false,"cpu":7,"row":0},{"id":"J0057","cls":"flexible","arrival":76.0,"start":76.0,"finish":82.0,"carbon":850.5,"late":false,"cpu":4,"row":1},{"id":"J0058","cls":"flexible","arrival":78.0,"start":78.0,"finish":83.0,"carbon":729.3,"late":false,"cpu":4,"row":0},{"id":"J0060","cls":"strict","arrival":83.0,"start":83.0,"finish":85.0,"carbon":163.7,"late":false,"cpu":2,"row":0},{"id":"J0062","cls":"strict","arrival":86.0,"start":86.0,"finish":87.0,"carbon":41.6,"late":false,"cpu":1,"row":0},{"id":"J0061","cls":"strict","arrival":86.0,"start":86.0,"finish":88.0,"carbon":84.5,"late":false,"cpu":1,"row":1},{"id":"J0064","cls":"batch","arrival":89.0,"start":89.0,"finish":94.0,"carbon":800.9,"late":false,"cpu":4,"row":0},{"id":"J0065","cls":"batch","arrival":92.0,"start":92.0,"finish":97.0,"carbon":974.3,"late":false,"cpu":5,"row":1},{"id":"J0067","cls":"strict","arrival":95.0,"start":95.0,"finish":96.0,"carbon":39.5,"late":false,"cpu":1,"row":0},{"id":"J0068","cls":"strict","arrival":96.0,"start":96.0,"finish":98.0,"carbon":234.7,"late":false,"cpu":3,"row":0},{"id":"J0070","cls":"strict","arrival":99.0,"start":99.0,"finish":102.0,"carbon":464.2,"late":false,"cpu":4,"row":0},{"id":"J0072","cls":"strict","arrival":102.0,"start":102.0,"finish":105.0,"carbon":111.4,"late":false,"cpu":1,"row":0},{"id":"J0076","cls":"strict","arrival":107.0,"start":107.0,"finish":108.0,"carbon":80.0,"late":false,"cpu":2,"row":0},{"id":"J0077","cls":"strict","arrival":109.0,"start":109.0,"finish":112.0,"carbon":381.8,"late":false,"cpu":3,"row":0},{"id":"J0078","cls":"strict","arrival":111.0,"start":111.0,"finish":114.0,"carbon":373.3,"late":false,"cpu":3,"row":1},{"id":"J0079","cls":"strict","arrival":113.0,"start":113.0,"finish":116.0,"carbon":238.4,"late":false,"cpu":2,"row":0},{"id":"J0081","cls":"batch","arrival":116.0,"start":116.0,"finish":118.0,"carbon":399.1,"late":false,"cpu":5,"row":0},{"id":"J0080","cls":"strict","arrival":116.0,"start":116.0,"finish":119.0,"carbon":120.3,"late":false,"cpu":1,"row":1},{"id":"J0082","cls":"flexible","arrival":118.0,"start":118.0,"finish":124.0,"carbon":1173.8,"late":false,"cpu":5,"row":0},{"id":"J0083","cls":"flexible","arrival":119.0,"start":119.0,"finish":125.0,"carbon":1863.1,"late":false,"cpu":8,"row":1},{"id":"J0085","cls":"strict","arrival":121.0,"start":121.0,"finish":123.0,"carbon":233.1,"late":false,"cpu":3,"row":2},{"id":"J0084","cls":"flexible","arrival":120.0,"start":124.0,"finish":129.0,"carbon":925.9,"late":false,"cpu":5,"row":3},{"id":"J0088","cls":"strict","arrival":127.0,"start":127.0,"finish":130.0,"carbon":330.1,"late":false,"cpu":3,"row":0},{"id":"J0089","cls":"batch","arrival":129.0,"start":129.0,"finish":134.0,"carbon":788.8,"late":false,"cpu":4,"row":1},{"id":"J0092","cls":"strict","arrival":134.0,"start":134.0,"finish":135.0,"carbon":87.1,"late":false,"cpu":2,"row":0},{"id":"J0093","cls":"strict","arrival":137.0,"start":137.0,"finish":138.0,"carbon":164.7,"late":false,"cpu":4,"row":0},{"id":"J0094","cls":"strict","arrival":137.0,"start":137.0,"finish":138.0,"carbon":164.7,"late":false,"cpu":4,"row":1},{"id":"J0095","cls":"batch","arrival":138.0,"start":138.0,"finish":142.0,"carbon":1290.8,"late":false,"cpu":8,"row":0},{"id":"J0096","cls":"flexible","arrival":140.0,"start":140.0,"finish":143.0,"carbon":974.3,"late":false,"cpu":8,"row":1},{"id":"J0097","cls":"strict","arrival":142.0,"start":142.0,"finish":145.0,"carbon":474.3,"late":false,"cpu":4,"row":0},{"id":"J0099","cls":"strict","arrival":144.0,"start":144.0,"finish":145.0,"carbon":152.3,"late":false,"cpu":4,"row":1},{"id":"J0100","cls":"flexible","arrival":144.0,"start":144.0,"finish":150.0,"carbon":680.0,"late":false,"cpu":3,"row":2}]},"Germany":{"rows":4,"jobs":[{"id":"J0005","cls":"flexible","arrival":3.0,"start":3.0,"finish":7.0,"carbon":323.3,"late":false,"cpu":5,"row":0},{"id":"J0007","cls":"flexible","arrival":6.0,"start":6.0,"finish":8.0,"carbon":248.0,"late":false,"cpu":7,"row":1},{"id":"J0009","cls":"batch","arrival":11.0,"start":11.0,"finish":13.0,"carbon":223.3,"late":false,"cpu":7,"row":0},{"id":"J0017","cls":"strict","arrival":22.0,"start":22.0,"finish":25.0,"carbon":58.3,"late":false,"cpu":1,"row":0},{"id":"J0020","cls":"flexible","arrival":27.0,"start":27.0,"finish":29.0,"carbon":166.2,"late":false,"cpu":4,"row":0},{"id":"J0024","cls":"strict","arrival":31.0,"start":31.0,"finish":34.0,"carbon":59.4,"late":false,"cpu":1,"row":0},{"id":"J0023","cls":"batch","arrival":31.0,"start":31.0,"finish":35.0,"carbon":391.7,"late":false,"cpu":5,"row":1},{"id":"J0025","cls":"batch","arrival":31.0,"start":31.0,"finish":35.0,"carbon":156.7,"late":false,"cpu":2,"row":2},{"id":"J0027","cls":"batch","arrival":32.0,"start":34.0,"finish":38.0,"carbon":543.4,"late":false,"cpu":7,"row":3},{"id":"J0032","cls":"strict","arrival":39.0,"start":39.0,"finish":41.0,"carbon":167.5,"late":false,"cpu":4,"row":0},{"id":"J0037","cls":"batch","arrival":45.0,"start":45.0,"finish":47.0,"carbon":361.1,"late":false,"cpu":8,"row":0},{"id":"J0040","cls":"flexible","arrival":48.0,"start":48.0,"finish":50.0,"carbon":140.3,"late":false,"cpu":3,"row":0},{"id":"J0042","cls":"flexible","arrival":49.0,"start":49.0,"finish":53.0,"carbon":658.9,"late":false,"cpu":7,"row":1},{"id":"J0051","cls":"flexible","arrival":65.0,"start":65.0,"finish":69.0,"carbon":195.3,"late":false,"cpu":2,"row":0},{"id":"J0056","cls":"batch","arrival":74.0,"start":74.0,"finish":79.0,"carbon":372.5,"late":false,"cpu":3,"row":0},{"id":"J0063","cls":"batch","arrival":87.0,"start":87.0,"finish":89.0,"carbon":284.3,"late":false,"cpu":6,"row":0},{"id":"J0066","cls":"batch","arrival":94.0,"start":94.0,"finish":97.0,"carbon":469.9,"late":false,"cpu":6,"row":0},{"id":"J0069","cls":"strict","arrival":98.0,"start":98.0,"finish":101.0,"carbon":77.7,"late":false,"cpu":1,"row":0},{"id":"J0075","cls":"strict","arrival":107.0,"start":107.0,"finish":108.0,"carbon":43.4,"late":false,"cpu":2,"row":0},{"id":"J0086","cls":"flexible","arrival":123.0,"start":123.0,"finish":125.0,"carbon":201.9,"late":false,"cpu":6,"row":0},{"id":"J0087","cls":"flexible","arrival":125.0,"start":125.0,"finish":130.0,"carbon":556.3,"late":false,"cpu":7,"row":0}]},"Norway":{"rows":3,"jobs":[{"id":"J0010","cls":"strict","arrival":12.0,"start":12.0,"finish":15.0,"carbon":7.4,"late":false,"cpu":3,"row":0},{"id":"J0059","cls":"flexible","arrival":81.0,"start":81.0,"finish":83.0,"carbon":11.7,"late":false,"cpu":7,"row":0},{"id":"J0071","cls":"batch","arrival":100.0,"start":100.0,"finish":105.0,"carbon":29.0,"late":false,"cpu":7,"row":0},{"id":"J0073","cls":"flexible","arrival":103.0,"start":103.0,"finish":107.0,"carbon":13.1,"late":false,"cpu":4,"row":1},{"id":"J0074","cls":"flexible","arrival":104.0,"start":105.0,"finish":109.0,"carbon":26.2,"late":false,"cpu":8,"row":2},{"id":"J0090","cls":"batch","arrival":130.0,"start":130.0,"finish":133.0,"carbon":17.3,"late":false,"cpu":7,"row":0},{"id":"J0091","cls":"batch","arrival":133.0,"start":133.0,"finish":137.0,"carbon":20.0,"late":false,"cpu":6,"row":0},{"id":"J0098","cls":"flexible","arrival":143.0,"start":143.0,"finish":145.0,"carbon":5.3,"late":false,"cpu":3,"row":0}]}},"carbon":46.43,"late":0},"greenest_region":{"label":"Greenest Region","lanes":{"India":{"rows":4,"jobs":[{"id":"J0001","cls":"batch","arrival":0.0,"start":0.0,"finish":4.0,"carbon":314.1,"late":false,"cpu":2,"row":0},{"id":"J0002","cls":"batch","arrival":3.0,"start":3.0,"finish":8.0,"carbon":367.7,"late":false,"cpu":2,"row":1},{"id":"J0003","cls":"batch","arrival":3.0,"start":4.0,"finish":10.0,"carbon":661.7,"late":false,"cpu":3,"row":2},{"id":"J0004","cls":"flexible","arrival":3.0,"start":8.0,"finish":13.0,"carbon":1553.4,"late":false,"cpu":8,"row":3},{"id":"J0008","cls":"flexible","arrival":9.0,"start":9.0,"finish":14.0,"carbon":988.9,"late":false,"cpu":5,"row":0},{"id":"J0011","cls":"flexible","arrival":13.0,"start":13.0,"finish":17.0,"carbon":332.3,"late":false,"cpu":2,"row":1},{"id":"J0018","cls":"batch","arrival":22.0,"start":22.0,"finish":28.0,"carbon":1631.9,"late":false,"cpu":7,"row":0},{"id":"J0019","cls":"strict","arrival":25.0,"start":25.0,"finish":27.0,"carbon":77.6,"late":false,"cpu":1,"row":1},{"id":"J0026","cls":"batch","arrival":32.0,"start":32.0,"finish":38.0,"carbon":1611.0,"late":false,"cpu":7,"row":0},{"id":"J0030","cls":"strict","arrival":37.0,"start":37.0,"finish":40.0,"carbon":121.6,"late":false,"cpu":1,"row":1},{"id":"J0033","cls":"flexible","arrival":41.0,"start":41.0,"finish":45.0,"carbon":944.5,"late":false,"cpu":6,"row":0},{"id":"J0034","cls":"flexible","arrival":42.0,"start":42.0,"finish":44.0,"carbon":157.0,"late":false,"cpu":2,"row":1},{"id":"J0036","cls":"batch","arrival":44.0,"start":44.0,"finish":48.0,"carbon":620.3,"late":false,"cpu":4,"row":1},{"id":"J0038","cls":"strict","arrival":46.0,"start":46.0,"finish":48.0,"carbon":229.3,"late":false,"cpu":3,"row":0},{"id":"J0039","cls":"strict","arrival":48.0,"start":48.0,"finish":51.0,"carbon":342.9,"late":false,"cpu":3,"row":0},{"id":"J0043","cls":"batch","arrival":50.0,"start":50.0,"finish":56.0,"carbon":1539.3,"late":false,"cpu":7,"row":1},{"id":"J0048","cls":"flexible","arrival":61.0,"start":61.0,"finish":63.0,"carbon":650.0,"late":false,"cpu":8,"row":0},{"id":"J0049","cls":"strict","arrival":63.0,"start":63.0,"finish":65.0,"carbon":318.7,"late":false,"cpu":4,"row":0},{"id":"J0052","cls":"strict","arrival":67.0,"start":67.0,"finish":69.0,"carbon":222.1,"late":false,"cpu":3,"row":0},{"id":"J0053","cls":"strict","arrival":69.0,"start":69.0,"finish":72.0,"carbon":345.9,"late":false,"cpu":3,"row":0},{"id":"J0055","cls":"flexible","arrival":73.0,"start":73.0,"finish":77.0,"carbon":1003.7,"late":false,"cpu":7,"row":0},{"id":"J0057","cls":"flexible","arrival":76.0,"start":76.0,"finish":82.0,"carbon":850.5,"late":false,"cpu":4,"row":1},{"id":"J0065","cls":"batch","arrival":92.0,"start":92.0,"finish":97.0,"carbon":974.3,"late":false,"cpu":5,"row":0},{"id":"J0068","cls":"strict","arrival":96.0,"start":96.0,"finish":98.0,"carbon":234.7,"late":false,"cpu":3,"row":1},{"id":"J0083","cls":"flexible","arrival":119.0,"start":119.0,"finish":125.0,"carbon":1863.1,"late":false,"cpu":8,"row":0},{"id":"J0084","cls":"flexible","arrival":120.0,"start":120.0,"finish":125.0,"carbon":967.8,"late":false,"cpu":5,"row":1},{"id":"J0097","cls":"strict","arrival":142.0,"start":142.0,"finish":145.0,"carbon":474.3,"late":false,"cpu":4,"row":0}]},"Germany":{"rows":3,"jobs":[{"id":"J0005","cls":"flexible","arrival":3.0,"start":3.0,"finish":7.0,"carbon":323.3,"late":false,"cpu":5,"row":0},{"id":"J0007","cls":"flexible","arrival":6.0,"start":6.0,"finish":8.0,"carbon":248.0,"late":false,"cpu":7,"row":1},{"id":"J0009","cls":"batch","arrival":11.0,"start":11.0,"finish":13.0,"carbon":223.3,"late":false,"cpu":7,"row":0},{"id":"J0014","cls":"strict","arrival":19.0,"start":19.0,"finish":20.0,"carbon":72.6,"late":false,"cpu":4,"row":0},{"id":"J0015","cls":"batch","arrival":21.0,"start":21.0,"finish":27.0,"carbon":586.5,"late":false,"cpu":5,"row":0},{"id":"J0016","cls":"flexible","arrival":21.0,"start":21.0,"finish":27.0,"carbon":821.1,"late":false,"cpu":7,"row":1},{"id":"J0017","cls":"strict","arrival":22.0,"start":22.0,"finish":25.0,"carbon":58.3,"late":false,"cpu":1,"row":2},{"id":"J0021","cls":"strict","arrival":28.0,"start":28.0,"finish":31.0,"carbon":63.5,"late":false,"cpu":1,"row":0},{"id":"J0024","cls":"strict","arrival":31.0,"start":31.0,"finish":34.0,"carbon":59.4,"late":false,"cpu":1,"row":0},{"id":"J0025","cls":"batch","arrival":31.0,"start":31.0,"finish":35.0,"carbon":156.7,"late":false,"cpu":2,"row":1},{"id":"J0027","cls":"batch","arrival":32.0,"start":32.0,"finish":36.0,"carbon":535.9,"late":false,"cpu":7,"row":2},{"id":"J0029","cls":"strict","arrival":35.0,"start":35.0,"finish":36.0,"carbon":38.0,"late":false,"cpu":2,"row":0},{"id":"J0032","cls":"strict","arrival":39.0,"start":39.0,"finish":41.0,"carbon":167.5,"late":false,"cpu":4,"row":0},{"id":"J0035","cls":"flexible","arrival":43.0,"start":43.0,"finish":49.0,"carbon":811.4,"late":false,"cpu":6,"row":0},{"id":"J0037","cls":"batch","arrival":45.0,"start":45.0,"finish":47.0,"carbon":361.1,"late":false,"cpu":8,"row":1},{"id":"J0040","cls":"flexible","arrival":48.0,"start":48.0,"finish":50.0,"carbon":140.3,"late":false,"cpu":3,"row":1},{"id":"J0041","cls":"strict","arrival":49.0,"start":49.0,"finish":52.0,"carbon":211.7,"late":false,"cpu":3,"row":0},{"id":"J0042","cls":"flexible","arrival":49.0,"start":49.0,"finish":53.0,"carbon":658.9,"late":false,"cpu":7,"row":2},{"id":"J0047","cls":"flexible","arrival":60.0,"start":60.0,"finish":64.0,"carbon":184.6,"late":false,"cpu":2,"row":0},{"id":"J0051","cls":"flexible","arrival":65.0,"start":65.0,"finish":69.0,"carbon":195.3,"late":false,"cpu":2,"row":0},{"id":"J0054","cls":"batch","arrival":71.0,"start":71.0,"finish":74.0,"carbon":546.7,"late":false,"cpu":7,"row":0},{"id":"J0058","cls":"flexible","arrival":78.0,"start":78.0,"finish":83.0,"carbon":443.5,"late":false,"cpu":4,"row":0},{"id":"J0062","cls":"strict","arrival":86.0,"start":86.0,"finish":87.0,"carbon":23.7,"late":false,"cpu":1,"row":0},{"id":"J0063","cls":"batch","arrival":87.0,"start":87.0,"finish":89.0,"carbon":284.3,"late":false,"cpu":6,"row":0},{"id":"J0066","cls":"batch","arrival":94.0,"start":94.0,"finish":97.0,"carbon":469.9,"late":false,"cpu":6,"row":0},{"id":"J0067","cls":"strict","arrival":95.0,"start":95.0,"finish":96.0,"carbon":26.0,"late":false,"cpu":1,"row":1},{"id":"J0069","cls":"strict","arrival":98.0,"start":98.0,"finish":101.0,"carbon":77.7,"late":false,"cpu":1,"row":0},{"id":"J0070","cls":"strict","arrival":99.0,"start":99.0,"finish":102.0,"carbon":303.8,"late":false,"cpu":4,"row":1},{"id":"J0072","cls":"strict","arrival":102.0,"start":102.0,"finish":105.0,"carbon":69.5,"late":false,"cpu":1,"row":0},{"id":"J0075","cls":"strict","arrival":107.0,"start":107.0,"finish":108.0,"carbon":43.4,"late":false,"cpu":2,"row":0},{"id":"J0078","cls":"strict","arrival":111.0,"start":111.0,"finish":114.0,"carbon":193.4,"late":false,"cpu":3,"row":0},{"id":"J0082","cls":"flexible","arrival":118.0,"start":118.0,"finish":124.0,"carbon":559.2,"late":false,"cpu":5,"row":0},{"id":"J0085","cls":"strict","arrival":121.0,"start":121.0,"finish":123.0,"carbon":108.9,"late":false,"cpu":3,"row":1},{"id":"J0086","cls":"flexible","arrival":123.0,"start":123.0,"finish":125.0,"carbon":201.9,"late":false,"cpu":6,"row":1},{"id":"J0087","cls":"flexible","arrival":125.0,"start":125.0,"finish":130.0,"carbon":556.3,"late":false,"cpu":7,"row":0},{"id":"J0088","cls":"strict","arrival":127.0,"start":127.0,"finish":130.0,"carbon":138.2,"late":false,"cpu":3,"row":1},{"id":"J0089","cls":"batch","arrival":129.0,"start":129.0,"finish":134.0,"carbon":287.3,"late":false,"cpu":4,"row":2},{"id":"J0093","cls":"strict","arrival":137.0,"start":137.0,"finish":138.0,"carbon":55.5,"late":false,"cpu":4,"row":0},{"id":"J0096","cls":"flexible","arrival":140.0,"start":140.0,"finish":143.0,"carbon":348.7,"late":false,"cpu":8,"row":0},{"id":"J0099","cls":"strict","arrival":144.0,"start":144.0,"finish":145.0,"carbon":54.2,"late":false,"cpu":4,"row":0},{"id":"J0100","cls":"flexible","arrival":144.0,"start":144.0,"finish":150.0,"carbon":244.5,"late":false,"cpu":3,"row":1}]},"Norway":{"rows":3,"jobs":[{"id":"J0006","cls":"batch","arrival":4.0,"start":4.0,"finish":10.0,"carbon":25.0,"late":false,"cpu":5,"row":0},{"id":"J0010","cls":"strict","arrival":12.0,"start":12.0,"finish":15.0,"carbon":7.4,"late":false,"cpu":3,"row":0},{"id":"J0013","cls":"strict","arrival":16.0,"start":16.0,"finish":19.0,"carbon":7.4,"late":false,"cpu":3,"row":0},{"id":"J0012","cls":"flexible","arrival":16.0,"start":16.0,"finish":21.0,"carbon":16.4,"late":false,"cpu":4,"row":1},{"id":"J0020","cls":"flexible","arrival":27.0,"start":27.0,"finish":29.0,"carbon":6.7,"late":false,"cpu":4,"row":0},{"id":"J0022","cls":"batch","arrival":29.0,"start":29.0,"finish":34.0,"carbon":33.0,"late":false,"cpu":8,"row":0},{"id":"J0023","cls":"batch","arrival":31.0,"start":31.0,"finish":35.0,"carbon":16.5,"late":false,"cpu":5,"row":1},{"id":"J0028","cls":"strict","arrival":34.0,"start":34.0,"finish":36.0,"carbon":1.7,"late":false,"cpu":1,"row":0},{"id":"J0031","cls":"flexible","arrival":38.0,"start":38.0,"finish":41.0,"carbon":12.5,"late":false,"cpu":5,"row":0},{"id":"J0044","cls":"strict","arrival":53.0,"start":53.0,"finish":54.0,"carbon":1.7,"late":false,"cpu":2,"row":0},{"id":"J0045","cls":"strict","arrival":54.0,"start":54.0,"finish":55.0,"carbon":0.8,"late":false,"cpu":1,"row":0},{"id":"J0046","cls":"batch","arrival":57.0,"start":57.0,"finish":60.0,"carbon":15.0,"late":false,"cpu":6,"row":0},{"id":"J0050","cls":"strict","arrival":64.0,"start":64.0,"finish":66.0,"carbon":1.6,"late":false,"cpu":1,"row":0},{"id":"J0056","cls":"batch","arrival":74.0,"start":74.0,"finish":79.0,"carbon":12.7,"late":false,"cpu":3,"row":0},{"id":"J0059","cls":"flexible","arrival":81.0,"start":81.0,"finish":83.0,"carbon":11.7,"late":false,"cpu":7,"row":0},{"id":"J0060","cls":"strict","arrival":83.0,"start":83.0,"finish":85.0,"carbon":3.3,"late":false,"cpu":2,"row":0},{"id":"J0061","cls":"strict","arrival":86.0,"start":86.0,"finish":88.0,"carbon":1.7,"late":false,"cpu":1,"row":0},{"id":"J0064","cls":"batch","arrival":89.0,"start":89.0,"finish":94.0,"carbon":16.5,"late":false,"cpu":4,"row":0},{"id":"J0071","cls":"batch","arrival":100.0,"start":100.0,"finish":105.0,"carbon":29.0,"late":false,"cpu":7,"row":0},{"id":"J0073","cls":"flexible","arrival":103.0,"start":103.0,"finish":107.0,"carbon":13.1,"late":false,"cpu":4,"row":1},{"id":"J0074","cls":"flexible","arrival":104.0,"start":105.0,"finish":109.0,"carbon":26.2,"late":false,"cpu":8,"row":2},{"id":"J0076","cls":"strict","arrival":107.0,"start":107.0,"finish":108.0,"carbon":1.6,"late":false,"cpu":2,"row":0},{"id":"J0077","cls":"strict","arrival":109.0,"start":109.0,"finish":112.0,"carbon":7.4,"late":false,"cpu":3,"row":0},{"id":"J0079","cls":"strict","arrival":113.0,"start":113.0,"finish":116.0,"carbon":4.9,"late":false,"cpu":2,"row":0},{"id":"J0081","cls":"batch","arrival":116.0,"start":116.0,"finish":118.0,"carbon":8.2,"late":false,"cpu":5,"row":0},{"id":"J0080","cls":"strict","arrival":116.0,"start":116.0,"finish":119.0,"carbon":2.5,"late":false,"cpu":1,"row":1},{"id":"J0090","cls":"batch","arrival":130.0,"start":130.0,"finish":133.0,"carbon":17.3,"late":false,"cpu":7,"row":0},{"id":"J0091","cls":"batch","arrival":133.0,"start":133.0,"finish":137.0,"carbon":20.0,"late":false,"cpu":6,"row":0},{"id":"J0092","cls":"strict","arrival":134.0,"start":134.0,"finish":135.0,"carbon":1.7,"late":false,"cpu":2,"row":1},{"id":"J0094","cls":"strict","arrival":137.0,"start":137.0,"finish":138.0,"carbon":3.4,"late":false,"cpu":4,"row":0},{"id":"J0095","cls":"batch","arrival":138.0,"start":138.0,"finish":142.0,"carbon":27.6,"late":false,"cpu":8,"row":0},{"id":"J0098","cls":"flexible","arrival":143.0,"start":143.0,"finish":145.0,"carbon":5.3,"late":false,"cpu":3,"row":0}]}},"carbon":30.71,"late":0},"temporal_green":{"label":"Temporal Green","lanes":{"India":{"rows":4,"jobs":[{"id":"J0003","cls":"batch","arrival":3.0,"start":4.0,"finish":10.0,"carbon":661.7,"late":false,"cpu":3,"row":0},{"id":"J0001","cls":"batch","arrival":0.0,"start":5.0,"finish":9.0,"carbon":290.6,"late":false,"cpu":2,"row":1},{"id":"J0002","cls":"batch","arrival":3.0,"start":9.0,"finish":14.0,"carbon":395.6,"late":true,"cpu":2,"row":2},{"id":"J0004","cls":"flexible","arrival":3.0,"start":16.0,"finish":21.0,"carbon":1539.4,"late":false,"cpu":8,"row":3},{"id":"J0011","cls":"flexible","arrival":13.0,"start":17.0,"finish":21.0,"carbon":303.3,"late":false,"cpu":2,"row":0},{"id":"J0008","cls":"flexible","arrival":9.0,"start":17.0,"finish":22.0,"carbon":949.1,"late":false,"cpu":5,"row":1},{"id":"J0019","cls":"strict","arrival":25.0,"start":25.0,"finish":27.0,"carbon":77.6,"late":false,"cpu":1,"row":0},{"id":"J0018","cls":"batch","arrival":22.0,"start":29.0,"finish":35.0,"carbon":1562.0,"late":false,"cpu":7,"row":1},{"id":"J0026","cls":"batch","arrival":32.0,"start":32.0,"finish":38.0,"carbon":1611.0,"late":false,"cpu":7,"row":0},{"id":"J0030","cls":"strict","arrival":37.0,"start":37.0,"finish":40.0,"carbon":121.6,"late":false,"cpu":1,"row":1},{"id":"J0033","cls":"flexible","arrival":41.0,"start":41.0,"finish":45.0,"carbon":944.5,"late":false,"cpu":6,"row":0},{"id":"J0034","cls":"flexible","arrival":42.0,"start":43.0,"finish":45.0,"carbon":154.5,"late":false,"cpu":2,"row":1},{"id":"J0036","cls":"batch","arrival":44.0,"start":44.0,"finish":48.0,"carbon":620.3,"late":false,"cpu":4,"row":2},{"id":"J0038","cls":"strict","arrival":46.0,"start":46.0,"finish":48.0,"carbon":229.3,"late":false,"cpu":3,"row":0},{"id":"J0039","cls":"strict","arrival":48.0,"start":48.0,"finish":51.0,"carbon":342.9,"late":false,"cpu":3,"row":0},{"id":"J0049","cls":"strict","arrival":63.0,"start":63.0,"finish":65.0,"carbon":318.7,"late":false,"cpu":4,"row":0},{"id":"J0052","cls":"strict","arrival":67.0,"start":67.0,"finish":69.0,"carbon":222.1,"late":false,"cpu":3,"row":0},{"id":"J0053","cls":"strict","arrival":69.0,"start":69.0,"finish":72.0,"carbon":345.9,"late":false,"cpu":3,"row":0},{"id":"J0048","cls":"flexible","arrival":61.0,"start":73.0,"finish":75.0,"carbon":581.3,"late":false,"cpu":8,"row":1},{"id":"J0055","cls":"flexible","arrival":73.0,"start":76.0,"finish":80.0,"carbon":979.1,"late":false,"cpu":7,"row":0},{"id":"J0057","cls":"flexible","arrival":76.0,"start":76.0,"finish":82.0,"carbon":850.5,"late":false,"cpu":4,"row":1},{"id":"J0068","cls":"strict","arrival":96.0,"start":96.0,"finish":98.0,"carbon":234.7,"late":false,"cpu":3,"row":0},{"id":"J0065","cls":"batch","arrival":92.0,"start":99.0,"finish":104.0,"carbon":952.5,"late":false,"cpu":5,"row":1},{"id":"J0066","cls":"batch","arrival":94.0,"start":100.0,"finish":103.0,"carbon":682.7,"late":false,"cpu":6,"row":2},{"id":"J0083","cls":"flexible","arrival":119.0,"start":120.0,"finish":126.0,"carbon":1848.2,"late":false,"cpu":8,"row":0},{"id":"J0084","cls":"flexible","arrival":120.0,"start":121.0,"finish":126.0,"carbon":965.5,"late":false,"cpu":5,"row":1},{"id":"J0097","cls":"strict","arrival":142.0,"start":142.0,"finish":145.0,"carbon":474.3,"late":false,"cpu":4,"row":0}]},"Germany":{"rows":6,"jobs":[{"id":"J0009","cls":"batch","arrival":11.0,"start":11.0,"finish":13.0,"carbon":223.3,"late":false,"cpu":7,"row":0},{"id":"J0005","cls":"flexible","arrival":3.0,"start":11.0,"finish":15.0,"carbon":331.1,"late":false,"cpu":5,"row":1},{"id":"J0007","cls":"flexible","arrival":6.0,"start":13.0,"finish":15.0,"carbon":240.2,"late":false,"cpu":7,"row":2},{"id":"J0014","cls":"strict","arrival":19.0,"start":19.0,"finish":20.0,"carbon":72.6,"late":false,"cpu":4,"row":0},{"id":"J0015","cls":"batch","arrival":21.0,"start":21.0,"finish":27.0,"carbon":586.5,"late":false,"cpu":5,"row":0},{"id":"J0016","cls":"flexible","arrival":21.0,"start":21.0,"finish":27.0,"carbon":821.1,"late":false,"cpu":7,"row":1},{"id":"J0017","cls":"strict","arrival":22.0,"start":22.0,"finish":25.0,"carbon":58.3,"late":false,"cpu":1,"row":2},{"id":"J0021","cls":"strict","arrival":28.0,"start":28.0,"finish":31.0,"carbon":63.5,"late":false,"cpu":1,"row":0},{"id":"J0027","cls":"batch","arrival":32.0,"start":32.0,"finish":36.0,"carbon":535.9,"late":false,"cpu":7,"row":0},{"id":"J0025","cls":"batch","arrival":31.0,"start":32.0,"finish":36.0,"carbon":153.1,"late":false,"cpu":2,"row":1},{"id":"J0029","cls":"strict","arrival":35.0,"start":35.0,"finish":36.0,"carbon":38.0,"late":false,"cpu":2,"row":2},{"id":"J0032","cls":"strict","arrival":39.0,"start":39.0,"finish":41.0,"carbon":167.5,"late":false,"cpu":4,"row":0},{"id":"J0041","cls":"strict","arrival":49.0,"start":49.0,"finish":52.0,"carbon":211.7,"late":false,"cpu":3,"row":0},{"id":"J0035","cls":"flexible","arrival":43.0,"start":51.0,"finish":57.0,"carbon":812.9,"late":false,"cpu":6,"row":1},{"id":"J0037","cls":"batch","arrival":45.0,"start":53.0,"finish":55.0,"carbon":360.1,"late":false,"cpu":8,"row":2},{"id":"J0043","cls":"batch","arrival":50.0,"start":55.0,"finish":61.0,"carbon":890.8,"late":false,"cpu":7,"row":3},{"id":"J0040","cls":"flexible","arrival":48.0,"start":57.0,"finish":59.0,"carbon":125.6,"late":false,"cpu":3,"row":4},{"id":"J0042","cls":"flexible","arrival":49.0,"start":59.0,"finish":63.0,"carbon":621.3,"late":true,"cpu":7,"row":5},{"id":"J0047","cls":"flexible","arrival":60.0,"start":64.0,"finish":68.0,"carbon":190.7,"late":false,"cpu":2,"row":0},{"id":"J0051","cls":"flexible","arrival":65.0,"start":65.0,"finish":69.0,"carbon":195.3,"late":false,"cpu":2,"row":1},{"id":"J0054","cls":"batch","arrival":71.0,"start":78.0,"finish":81.0,"carbon":481.6,"late":false,"cpu":7,"row":0},{"id":"J0058","cls":"flexible","arrival":78.0,"start":81.0,"finish":86.0,"carbon":426.3,"late":false,"cpu":4,"row":1},{"id":"J0062","cls":"strict","arrival":86.0,"start":86.0,"finish":87.0,"carbon":23.7,"late":false,"cpu":1,"row":0},{"id":"J0063","cls":"batch","arrival":87.0,"start":88.0,"finish":90.0,"carbon":283.3,"late":false,"cpu":6,"row":0},{"id":"J0067","cls":"strict","arrival":95.0,"start":95.0,"finish":96.0,"carbon":26.0,"late":false,"cpu":1,"row":0},{"id":"J0069","cls":"strict","arrival":98.0,"start":98.0,"finish":101.0,"carbon":77.7,"late":false,"cpu":1,"row":0},{"id":"J0070","cls":"strict","arrival":99.0,"start":99.0,"finish":102.0,"carbon":303.8,"late":false,"cpu":4,"row":1},{"id":"J0072","cls":"strict","arrival":102.0,"start":102.0,"finish":105.0,"carbon":69.5,"late":false,"cpu":1,"row":0},{"id":"J0075","cls":"strict","arrival":107.0,"start":107.0,"finish":108.0,"carbon":43.4,"late":false,"cpu":2,"row":0},{"id":"J0078","cls":"strict","arrival":111.0,"start":111.0,"finish":114.0,"carbon":193.4,"late":false,"cpu":3,"row":0},{"id":"J0085","cls":"strict","arrival":121.0,"start":121.0,"finish":123.0,"carbon":108.9,"late":false,"cpu":3,"row":0},{"id":"J0088","cls":"strict","arrival":127.0,"start":127.0,"finish":130.0,"carbon":138.2,"late":false,"cpu":3,"row":0},{"id":"J0082","cls":"flexible","arrival":118.0,"start":127.0,"finish":133.0,"carbon":444.2,"late":false,"cpu":5,"row":1},{"id":"J0086","cls":"flexible","arrival":123.0,"start":130.0,"finish":132.0,"carbon":170.6,"late":false,"cpu":6,"row":2},{"id":"J0089","cls":"batch","arrival":129.0,"start":135.0,"finish":140.0,"carbon":282.4,"late":false,"cpu":4,"row":3},{"id":"J0087","cls":"flexible","arrival":125.0,"start":135.0,"finish":140.0,"carbon":494.1,"late":false,"cpu":7,"row":4},{"id":"J0093","cls":"strict","arrival":137.0,"start":137.0,"finish":138.0,"carbon":55.5,"late":false,"cpu":4,"row":0},{"id":"J0099","cls":"strict","arrival":144.0,"start":144.0,"finish":145.0,"carbon":54.2,"late":false,"cpu":4,"row":0},{"id":"J0100","cls":"flexible","arrival":144.0,"start":144.0,"finish":150.0,"carbon":244.5,"late":false,"cpu":3,"row":1},{"id":"J0096","cls":"flexible","arrival":140.0,"start":148.0,"finish":151.0,"carbon":339.7,"late":false,"cpu":8,"row":2}]},"Norway":{"rows":5,"jobs":[{"id":"J0006","cls":"batch","arrival":4.0,"start":11.0,"finish":17.0,"carbon":24.8,"late":false,"cpu":5,"row":0},{"id":"J0010","cls":"strict","arrival":12.0,"start":12.0,"finish":15.0,"carbon":7.4,"late":false,"cpu":3,"row":1},{"id":"J0013","cls":"strict","arrival":16.0,"start":16.0,"finish":19.0,"carbon":7.4,"late":false,"cpu":3,"row":1},{"id":"J0012","cls":"flexible","arrival":16.0,"start":28.0,"finish":33.0,"carbon":16.6,"late":false,"cpu":4,"row":2},{"id":"J0024","cls":"strict","arrival":31.0,"start":31.0,"finish":34.0,"carbon":2.5,"late":false,"cpu":1,"row":0},{"id":"J0022","cls":"batch","arrival":29.0,"start":31.0,"finish":36.0,"carbon":33.1,"late":false,"cpu":8,"row":1},{"id":"J0028","cls":"strict","arrival":34.0,"start":34.0,"finish":36.0,"carbon":1.7,"late":false,"cpu":1,"row":0},{"id":"J0020","cls":"flexible","arrival":27.0,"start":38.0,"finish":40.0,"carbon":6.7,"late":false,"cpu":4,"row":3},{"id":"J0023","cls":"batch","arrival":31.0,"start":39.0,"finish":43.0,"carbon":16.7,"late":false,"cpu":5,"row":4},{"id":"J0031","cls":"flexible","arrival":38.0,"start":50.0,"finish":53.0,"carbon":12.7,"late":false,"cpu":5,"row":0},{"id":"J0044","cls":"strict","arrival":53.0,"start":53.0,"finish":54.0,"carbon":1.7,"late":false,"cpu":2,"row":0},{"id":"J0045","cls":"strict","arrival":54.0,"start":54.0,"finish":55.0,"carbon":0.8,"late":false,"cpu":1,"row":0},{"id":"J0046","cls":"batch","arrival":57.0,"start":60.0,"finish":63.0,"carbon":14.8,"late":false,"cpu":6,"row":0},{"id":"J0050","cls":"strict","arrival":64.0,"start":64.0,"finish":66.0,"carbon":1.6,"late":false,"cpu":1,"row":0},{"id":"J0056","cls":"batch","arrival":74.0,"start":78.0,"finish":83.0,"carbon":12.5,"late":false,"cpu":3,"row":0},{"id":"J0060","cls":"strict","arrival":83.0,"start":83.0,"finish":85.0,"carbon":3.3,"late":false,"cpu":2,"row":0},{"id":"J0061","cls":"strict","arrival":86.0,"start":86.0,"finish":88.0,"carbon":1.7,"late":false,"cpu":1,"row":0},{"id":"J0059","cls":"flexible","arrival":81.0,"start":88.0,"finish":90.0,"carbon":11.6,"late":false,"cpu":7,"row":1},{"id":"J0064","cls":"batch","arrival":89.0,"start":89.0,"finish":94.0,"carbon":16.5,"late":false,"cpu":4,"row":0},{"id":"J0071","cls":"batch","arrival":100.0,"start":100.0,"finish":105.0,"carbon":29.0,"late":false,"cpu":7,"row":0},{"id":"J0076","cls":"strict","arrival":107.0,"start":107.0,"finish":108.0,"carbon":1.6,"late":false,"cpu":2,"row":0},{"id":"J0077","cls":"strict","arrival":109.0,"start":109.0,"finish":112.0,"carbon":7.4,"late":false,"cpu":3,"row":0},{"id":"J0073","cls":"flexible","arrival":103.0,"start":109.0,"finish":113.0,"carbon":13.1,"late":false,"cpu":4,"row":1},{"id":"J0074","cls":"flexible","arrival":104.0,"start":109.0,"finish":113.0,"carbon":26.2,"late":false,"cpu":8,"row":2},{"id":"J0079","cls":"strict","arrival":113.0,"start":113.0,"finish":116.0,"carbon":4.9,"late":false,"cpu":2,"row":0},{"id":"J0080","cls":"strict","arrival":116.0,"start":116.0,"finish":119.0,"carbon":2.5,"late":false,"cpu":1,"row":0},{"id":"J0081","cls":"batch","arrival":116.0,"start":120.0,"finish":122.0,"carbon":8.3,"late":false,"cpu":5,"row":1},{"id":"J0090","cls":"batch","arrival":130.0,"start":133.0,"finish":136.0,"carbon":17.6,"late":false,"cpu":7,"row":0},{"id":"J0091","cls":"batch","arrival":133.0,"start":133.0,"finish":137.0,"carbon":20.0,"late":false,"cpu":6,"row":1},{"id":"J0092","cls":"strict","arrival":134.0,"start":134.0,"finish":135.0,"carbon":1.7,"late":false,"cpu":2,"row":2},{"id":"J0094","cls":"strict","arrival":137.0,"start":137.0,"finish":138.0,"carbon":3.4,"late":false,"cpu":4,"row":0},{"id":"J0095","cls":"batch","arrival":138.0,"start":140.0,"finish":144.0,"carbon":28.1,"late":false,"cpu":8,"row":0},{"id":"J0098","cls":"flexible","arrival":143.0,"start":146.0,"finish":148.0,"carbon":5.4,"late":false,"cpu":3,"row":1}]}},"carbon":29.58,"late":2},"greenops_moo":{"label":"GreenOps","lanes":{"India":{"rows":4,"jobs":[{"id":"J0001","cls":"batch","arrival":0.0,"start":1.0,"finish":5.0,"carbon":309.5,"late":false,"cpu":2,"row":0},{"id":"J0002","cls":"batch","arrival":3.0,"start":3.0,"finish":8.0,"carbon":367.7,"late":false,"cpu":2,"row":1},{"id":"J0003","cls":"batch","arrival":3.0,"start":5.0,"finish":11.0,"carbon":668.5,"late":false,"cpu":3,"row":2},{"id":"J0004","cls":"flexible","arrival":3.0,"start":8.0,"finish":13.0,"carbon":1553.4,"late":false,"cpu":8,"row":3},{"id":"J0008","cls":"flexible","arrival":9.0,"start":9.0,"finish":14.0,"carbon":988.9,"late":false,"cpu":5,"row":0},{"id":"J0011","cls":"flexible","arrival":13.0,"start":17.0,"finish":21.0,"carbon":303.3,"late":false,"cpu":2,"row":1},{"id":"J0018","cls":"batch","arrival":22.0,"start":22.0,"finish":28.0,"carbon":1631.9,"late":false,"cpu":7,"row":0},{"id":"J0019","cls":"strict","arrival":25.0,"start":25.0,"finish":27.0,"carbon":77.6,"late":false,"cpu":1,"row":1},{"id":"J0024","cls":"strict","arrival":31.0,"start":31.0,"finish":34.0,"carbon":108.8,"late":false,"cpu":1,"row":0},{"id":"J0026","cls":"batch","arrival":32.0,"start":32.0,"finish":38.0,"carbon":1611.0,"late":false,"cpu":7,"row":1},{"id":"J0030","cls":"strict","arrival":37.0,"start":37.0,"finish":40.0,"carbon":121.6,"late":false,"cpu":1,"row":0},{"id":"J0033","cls":"flexible","arrival":41.0,"start":41.0,"finish":45.0,"carbon":944.5,"late":false,"cpu":6,"row":0},{"id":"J0034","cls":"flexible","arrival":42.0,"start":43.0,"finish":45.0,"carbon":154.5,"late":false,"cpu":2,"row":1},{"id":"J0036","cls":"batch","arrival":44.0,"start":44.0,"finish":48.0,"carbon":620.3,"late":false,"cpu":4,"row":2},{"id":"J0038","cls":"strict","arrival":46.0,"start":46.0,"finish":48.0,"carbon":229.3,"late":false,"cpu":3,"row":0},{"id":"J0039","cls":"strict","arrival":48.0,"start":48.0,"finish":51.0,"carbon":342.9,"late":false,"cpu":3,"row":0},{"id":"J0049","cls":"strict","arrival":63.0,"start":63.0,"finish":65.0,"carbon":318.7,"late":false,"cpu":4,"row":0},{"id":"J0052","cls":"strict","arrival":67.0,"start":67.0,"finish":69.0,"carbon":222.1,"late":false,"cpu":3,"row":0},{"id":"J0048","cls":"flexible","arrival":61.0,"start":67.0,"finish":69.0,"carbon":592.2,"late":false,"cpu":8,"row":1},{"id":"J0053","cls":"strict","arrival":69.0,"start":69.0,"finish":72.0,"carbon":345.9,"late":false,"cpu":3,"row":0},{"id":"J0055","cls":"flexible","arrival":73.0,"start":74.0,"finish":78.0,"carbon":996.0,"late":false,"cpu":7,"row":0},{"id":"J0057","cls":"flexible","arrival":76.0,"start":76.0,"finish":82.0,"carbon":850.5,"late":false,"cpu":4,"row":1},{"id":"J0065","cls":"batch","arrival":92.0,"start":92.0,"finish":97.0,"carbon":974.3,"late":false,"cpu":5,"row":0},{"id":"J0067","cls":"strict","arrival":95.0,"start":95.0,"finish":96.0,"carbon":39.5,"late":false,"cpu":1,"row":1},{"id":"J0068","cls":"strict","arrival":96.0,"start":96.0,"finish":98.0,"carbon":234.7,"late":false,"cpu":3,"row":1},{"id":"J0083","cls":"flexible","arrival":119.0,"start":119.0,"finish":125.0,"carbon":1863.1,"late":false,"cpu":8,"row":0},{"id":"J0084","cls":"flexible","arrival":120.0,"start":120.0,"finish":125.0,"carbon":967.8,"late":false,"cpu":5,"row":1},{"id":"J0097","cls":"strict","arrival":142.0,"start":142.0,"finish":145.0,"carbon":474.3,"late":false,"cpu":4,"row":0}]},"Germany":{"rows":3,"jobs":[{"id":"J0005","cls":"flexible","arrival":3.0,"start":3.0,"finish":7.0,"carbon":323.3,"late":false,"cpu":5,"row":0},{"id":"J0007","cls":"flexible","arrival":6.0,"start":7.0,"finish":9.0,"carbon":242.8,"late":false,"cpu":7,"row":1},{"id":"J0009","cls":"batch","arrival":11.0,"start":11.0,"finish":13.0,"carbon":223.3,"late":false,"cpu":7,"row":0},{"id":"J0014","cls":"strict","arrival":19.0,"start":19.0,"finish":20.0,"carbon":72.6,"late":false,"cpu":4,"row":0},{"id":"J0015","cls":"batch","arrival":21.0,"start":21.0,"finish":27.0,"carbon":586.5,"late":false,"cpu":5,"row":0},{"id":"J0016","cls":"flexible","arrival":21.0,"start":21.0,"finish":27.0,"carbon":821.1,"late":false,"cpu":7,"row":1},{"id":"J0017","cls":"strict","arrival":22.0,"start":22.0,"finish":25.0,"carbon":58.3,"late":false,"cpu":1,"row":2},{"id":"J0021","cls":"strict","arrival":28.0,"start":28.0,"finish":31.0,"carbon":63.5,"late":false,"cpu":1,"row":0},{"id":"J0025","cls":"batch","arrival":31.0,"start":31.0,"finish":35.0,"carbon":156.7,"late":false,"cpu":2,"row":0},{"id":"J0027","cls":"batch","arrival":32.0,"start":32.0,"finish":36.0,"carbon":535.9,"late":false,"cpu":7,"row":1},{"id":"J0029","cls":"strict","arrival":35.0,"start":35.0,"finish":36.0,"carbon":38.0,"late":false,"cpu":2,"row":0},{"id":"J0032","cls":"strict","arrival":39.0,"start":39.0,"finish":41.0,"carbon":167.5,"late":false,"cpu":4,"row":0},{"id":"J0035","cls":"flexible","arrival":43.0,"start":43.0,"finish":49.0,"carbon":811.4,"late":false,"cpu":6,"row":0},{"id":"J0037","cls":"batch","arrival":45.0,"start":45.0,"finish":47.0,"carbon":361.1,"late":false,"cpu":8,"row":1},{"id":"J0040","cls":"flexible","arrival":48.0,"start":48.0,"finish":50.0,"carbon":140.3,"late":false,"cpu":3,"row":1},{"id":"J0041","cls":"strict","arrival":49.0,"start":49.0,"finish":52.0,"carbon":211.7,"late":false,"cpu":3,"row":0},{"id":"J0043","cls":"batch","arrival":50.0,"start":50.0,"finish":56.0,"carbon":962.5,"late":false,"cpu":7,"row":1},{"id":"J0042","cls":"flexible","arrival":49.0,"start":52.0,"finish":56.0,"carbon":632.8,"late":false,"cpu":7,"row":2},{"id":"J0047","cls":"flexible","arrival":60.0,"start":60.0,"finish":64.0,"carbon":184.6,"late":false,"cpu":2,"row":0},{"id":"J0051","cls":"flexible","arrival":65.0,"start":65.0,"finish":69.0,"carbon":195.3,"late":false,"cpu":2,"row":0},{"id":"J0054","cls":"batch","arrival":71.0,"start":71.0,"finish":74.0,"carbon":546.7,"late":false,"cpu":7,"row":0},{"id":"J0058","cls":"flexible","arrival":78.0,"start":81.0,"finish":86.0,"carbon":426.3,"late":false,"cpu":4,"row":0},{"id":"J0062","cls":"strict","arrival":86.0,"start":86.0,"finish":87.0,"carbon":23.7,"late":false,"cpu":1,"row":0},{"id":"J0063","cls":"batch","arrival":87.0,"start":87.0,"finish":89.0,"carbon":284.3,"late":false,"cpu":6,"row":0},{"id":"J0066","cls":"batch","arrival":94.0,"start":94.0,"finish":97.0,"carbon":469.9,"late":false,"cpu":6,"row":0},{"id":"J0069","cls":"strict","arrival":98.0,"start":98.0,"finish":101.0,"carbon":77.7,"late":false,"cpu":1,"row":0},{"id":"J0070","cls":"strict","arrival":99.0,"start":99.0,"finish":102.0,"carbon":303.8,"late":false,"cpu":4,"row":1},{"id":"J0072","cls":"strict","arrival":102.0,"start":102.0,"finish":105.0,"carbon":69.5,"late":false,"cpu":1,"row":0},{"id":"J0075","cls":"strict","arrival":107.0,"start":107.0,"finish":108.0,"carbon":43.4,"late":false,"cpu":2,"row":0},{"id":"J0078","cls":"strict","arrival":111.0,"start":111.0,"finish":114.0,"carbon":193.4,"late":false,"cpu":3,"row":0},{"id":"J0082","cls":"flexible","arrival":118.0,"start":119.0,"finish":125.0,"carbon":543.0,"late":false,"cpu":5,"row":0},{"id":"J0085","cls":"strict","arrival":121.0,"start":121.0,"finish":123.0,"carbon":108.9,"late":false,"cpu":3,"row":1},{"id":"J0086","cls":"flexible","arrival":123.0,"start":123.0,"finish":125.0,"carbon":201.9,"late":false,"cpu":6,"row":1},{"id":"J0087","cls":"flexible","arrival":125.0,"start":126.0,"finish":131.0,"carbon":538.8,"late":false,"cpu":7,"row":0},{"id":"J0088","cls":"strict","arrival":127.0,"start":127.0,"finish":130.0,"carbon":138.2,"late":false,"cpu":3,"row":1},{"id":"J0089","cls":"batch","arrival":129.0,"start":129.0,"finish":134.0,"carbon":287.3,"late":false,"cpu":4,"row":2},{"id":"J0093","cls":"strict","arrival":137.0,"start":137.0,"finish":138.0,"carbon":55.5,"late":false,"cpu":4,"row":0},{"id":"J0096","cls":"flexible","arrival":140.0,"start":140.0,"finish":143.0,"carbon":348.7,"late":false,"cpu":8,"row":0},{"id":"J0099","cls":"strict","arrival":144.0,"start":144.0,"finish":145.0,"carbon":54.2,"late":false,"cpu":4,"row":0},{"id":"J0100","cls":"flexible","arrival":144.0,"start":144.0,"finish":150.0,"carbon":244.5,"late":false,"cpu":3,"row":1}]},"Norway":{"rows":3,"jobs":[{"id":"J0006","cls":"batch","arrival":4.0,"start":4.0,"finish":10.0,"carbon":25.0,"late":false,"cpu":5,"row":0},{"id":"J0010","cls":"strict","arrival":12.0,"start":12.0,"finish":15.0,"carbon":7.4,"late":false,"cpu":3,"row":0},{"id":"J0013","cls":"strict","arrival":16.0,"start":16.0,"finish":19.0,"carbon":7.4,"late":false,"cpu":3,"row":0},{"id":"J0012","cls":"flexible","arrival":16.0,"start":16.0,"finish":21.0,"carbon":16.4,"late":false,"cpu":4,"row":1},{"id":"J0020","cls":"flexible","arrival":27.0,"start":27.0,"finish":29.0,"carbon":6.7,"late":false,"cpu":4,"row":0},{"id":"J0022","cls":"batch","arrival":29.0,"start":29.0,"finish":34.0,"carbon":33.0,"late":false,"cpu":8,"row":0},{"id":"J0023","cls":"batch","arrival":31.0,"start":31.0,"finish":35.0,"carbon":16.5,"late":false,"cpu":5,"row":1},{"id":"J0028","cls":"strict","arrival":34.0,"start":34.0,"finish":36.0,"carbon":1.7,"late":false,"cpu":1,"row":0},{"id":"J0031","cls":"flexible","arrival":38.0,"start":38.0,"finish":41.0,"carbon":12.5,"late":false,"cpu":5,"row":0},{"id":"J0044","cls":"strict","arrival":53.0,"start":53.0,"finish":54.0,"carbon":1.7,"late":false,"cpu":2,"row":0},{"id":"J0045","cls":"strict","arrival":54.0,"start":54.0,"finish":55.0,"carbon":0.8,"late":false,"cpu":1,"row":0},{"id":"J0046","cls":"batch","arrival":57.0,"start":57.0,"finish":60.0,"carbon":15.0,"late":false,"cpu":6,"row":0},{"id":"J0050","cls":"strict","arrival":64.0,"start":64.0,"finish":66.0,"carbon":1.6,"late":false,"cpu":1,"row":0},{"id":"J0056","cls":"batch","arrival":74.0,"start":74.0,"finish":79.0,"carbon":12.7,"late":false,"cpu":3,"row":0},{"id":"J0059","cls":"flexible","arrival":81.0,"start":82.0,"finish":84.0,"carbon":11.7,"late":false,"cpu":7,"row":0},{"id":"J0060","cls":"strict","arrival":83.0,"start":83.0,"finish":85.0,"carbon":3.3,"late":false,"cpu":2,"row":1},{"id":"J0061","cls":"strict","arrival":86.0,"start":86.0,"finish":88.0,"carbon":1.7,"late":false,"cpu":1,"row":0},{"id":"J0064","cls":"batch","arrival":89.0,"start":89.0,"finish":94.0,"carbon":16.5,"late":false,"cpu":4,"row":0},{"id":"J0071","cls":"batch","arrival":100.0,"start":100.0,"finish":105.0,"carbon":29.0,"late":false,"cpu":7,"row":0},{"id":"J0073","cls":"flexible","arrival":103.0,"start":103.0,"finish":107.0,"carbon":13.1,"late":false,"cpu":4,"row":1},{"id":"J0074","cls":"flexible","arrival":104.0,"start":105.0,"finish":109.0,"carbon":26.2,"late":false,"cpu":8,"row":2},{"id":"J0076","cls":"strict","arrival":107.0,"start":107.0,"finish":108.0,"carbon":1.6,"late":false,"cpu":2,"row":0},{"id":"J0077","cls":"strict","arrival":109.0,"start":109.0,"finish":112.0,"carbon":7.4,"late":false,"cpu":3,"row":0},{"id":"J0079","cls":"strict","arrival":113.0,"start":113.0,"finish":116.0,"carbon":4.9,"late":false,"cpu":2,"row":0},{"id":"J0081","cls":"batch","arrival":116.0,"start":116.0,"finish":118.0,"carbon":8.2,"late":false,"cpu":5,"row":0},{"id":"J0080","cls":"strict","arrival":116.0,"start":116.0,"finish":119.0,"carbon":2.5,"late":false,"cpu":1,"row":1},{"id":"J0090","cls":"batch","arrival":130.0,"start":130.0,"finish":133.0,"carbon":17.3,"late":false,"cpu":7,"row":0},{"id":"J0091","cls":"batch","arrival":133.0,"start":133.0,"finish":137.0,"carbon":20.0,"late":false,"cpu":6,"row":0},{"id":"J0092","cls":"strict","arrival":134.0,"start":134.0,"finish":135.0,"carbon":1.7,"late":false,"cpu":2,"row":1},{"id":"J0094","cls":"strict","arrival":137.0,"start":137.0,"finish":138.0,"carbon":3.4,"late":false,"cpu":4,"row":0},{"id":"J0095","cls":"batch","arrival":138.0,"start":138.0,"finish":142.0,"carbon":27.6,"late":false,"cpu":8,"row":0},{"id":"J0098","cls":"flexible","arrival":143.0,"start":143.0,"finish":145.0,"carbon":5.3,"late":false,"cpu":3,"row":0}]}},"carbon":30.02,"late":0}},"horizon":151.0,"intensity":{"India":[716,722,715,702,675,655,656,655,676,694,716,730,715,742,763,775,741,703,685,679,690,694,705,698,705,712,700,718,710,705,674,653,655,671,699,717,721,721,731,758,739,730,727,700,704,725,695,694,696,687,695,689,656,654,649,656,683,701,718,711,731,734,743,733,716,699,713,681,665,677,704,715,688,655,666,654,631,635,639,637,649,674,716,737,752,768,756,781,784,772,728,714,727,700,700,718,699,724,727,715,704,692,673,680,673,681,714,727,724,750,784,780,749,733,721,713,734,717,736,715,690,700,713,715,702,681,662,660,661,679,704,715,735,752,792,795,774,749,734,739,729,731,754,710,692,697,700,695,674,664,650,634,676],"Germany":[356,346,340,349,383,423,437,435,418,406,397,390,396,411,434,442,426,421,435,447,457,468,472,480,483,490,494,507,516,519,527,512,483,468,466,468,476,501,532,524,507,502,516,535,545,552,559,564,574,577,579,580,580,566,542,537,530,521,509,510,525,555,594,598,577,574,585,612,634,644,647,645,642,635,631,625,613,599,588,563,542,524,511,508,527,553,584,591,576,587,610,631,642,646,642,641,645,645,650,637,626,607,592,565,553,546,537,534,528,521,534,535,527,526,538,537,522,512,491,484,467,458,436,417,412,415,408,394,375,364,353,347,353,351,348,348,343,342,348,356,362,361,349,338,334,331,327,329,336,349,360,366,366],"Norway":[28,28,29,29,28,28,28,27,27,27,27,27,27,27,27,27,27,27,27,27,27,27,27,27,27,28,28,28,28,28,27,27,27,27,27,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,27,27,27,27,27,27,27,27,27,27,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,27,28,27,27,27,27,27,27,27,28,28,28,28,28,28,28,28,27,27,27,27,27,27,27,27,27,27,27,27,27,27,27,28,28,28,27,27,28,28,28,28,27,27,27,27,27,27,28,28,28,28,28,28,28,29,29,29,29,30,29,30,30,30,30,29,29,28,28]}},"sensitivity":{"forecast":{"Temporal Green":[[0,68.23],[5,68.28],[10,68.68],[15,69.21],[20,69.48],[30,70.47],[50,71.58]],"GreenOps":[[0,69.57],[5,69.67],[10,69.81],[15,69.94],[20,70.09],[30,70.4],[50,70.9]],"Greenest Region":[[0,74.04]]},"maxwait":{"Temporal Green":{"carbon":[[0,74.05],[1,70.51],[2,69.96],[4,69.42],[6,69.12],[8,69.05],[12,69.21],[18,69.38],[24,69.38]],"p95":[[0,6.0],[1,6.86],[2,7.85],[4,9.8],[6,11.6],[8,13.15],[12,15.06],[18,15.9],[24,15.9]]},"GreenOps":{"carbon":[[0,74.61],[1,71.0],[2,70.17],[4,70.06],[6,70.01],[8,69.98],[12,69.94],[18,69.94],[24,69.94]],"p95":[[0,6.0],[1,6.05],[2,6.8],[4,7.01],[6,7.21],[8,7.31],[12,7.21],[18,7.21],[24,7.21]]}}}}</script>
+<script>
+(function () {
+  "use strict";
+
+  var D = JSON.parse(document.getElementById("data").textContent);
+  var NS = "http://www.w3.org/2000/svg";
+  var tip = document.getElementById("tip");
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var state = { season: "both", metric: "carbon", trace: "winter_2024", sched: "greenops_moo", t: 0 };
+
+  // ---------------- helpers ----------------
+  function el(tag, attrs, parent, text) {
+    var node = document.createElementNS(NS, tag);
+    for (var k in attrs) {
+      if (k === "style") node.setAttribute("style", attrs[k]);
+      else node.setAttribute(k, attrs[k]);
+    }
+    if (text !== undefined) node.textContent = text;
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+  function svg(container, w, h, label) {
+    container.innerHTML = "";
+    return el("svg", { viewBox: "0 0 " + w + " " + h, role: "img", "aria-label": label }, container);
+  }
+  function fmt(v, d) { return Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function signed(v) { return (v > 0 ? "+" : v < 0 ? "−" : "") + fmt(Math.abs(v), 1) + " %"; }
+  function showTip(evt, html) {
+    tip.innerHTML = html;
+    tip.hidden = false;
+    var x = evt.pageX + 14, y = evt.pageY + 14;
+    var maxX = window.scrollX + document.documentElement.clientWidth - tip.offsetWidth - 8;
+    tip.style.left = Math.min(x, maxX) + "px";
+    tip.style.top = y + "px";
+  }
+  function hideTip() { tip.hidden = true; }
+  function segment(id, key, onChange) {
+    var group = document.getElementById(id);
+    group.addEventListener("click", function (e) {
+      var b = e.target.closest("button");
+      if (!b) return;
+      group.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      state[key] = b.dataset.v;
+      onChange();
+    });
+  }
+  function setPressed(id, value) {
+    document.getElementById(id).querySelectorAll("button").forEach(function (x) {
+      x.setAttribute("aria-pressed", x.dataset.v === value ? "true" : "false");
+    });
+  }
+  function rows() { return D.comparison[state.season]; }
+  function find(key) { return rows().filter(function (r) { return r.key === key; })[0]; }
+
+  // ---------------- KPI tiles ----------------
+  function renderKpis() {
+    var g = find("greenops_moo"), rr = find("round_robin"), gr = find("greenest_region"), tg = find("temporal_green");
+    var tiles = [
+      ["Carbon vs Round Robin", signed(g.vs_rr), true, fmt(g.carbon, 1) + " kg vs " + fmt(rr.carbon, 1) + " kg per run"],
+      ["Carbon vs Greenest Region", signed(g.vs_green), true, fmt(gr.carbon, 1) + " kg for the greedy policy"],
+      ["SLA violations per run", fmt(g.sla, 2), false, "Temporal Green: " + fmt(tg.sla, 2) + " (300 jobs)"],
+      ["p95 job latency", fmt(g.p95, 1) + " h", false, "Temporal Green: " + fmt(tg.p95, 1) + " h"]
+    ];
+    var box = document.getElementById("kpis");
+    box.innerHTML = "";
+    tiles.forEach(function (t) {
+      var d = document.createElement("div");
+      d.className = "kpi";
+      d.innerHTML = '<span class="label">' + t[0] + '</span><span class="value' + (t[2] ? " good" : "") + '">' + t[1] +
+        '</span><span class="sub">' + t[3] + "</span>";
+      box.appendChild(d);
+    });
+  }
+
+  // ---------------- comparison bars ----------------
+  var METRICS = {
+    carbon: { label: "kg CO₂eq per run", d: 1, unit: " kg" },
+    cost: { label: "$ per run", d: 0, unit: "", prefix: "$" },
+    sla: { label: "late jobs per run (of 300)", d: 2, unit: "" },
+    p95: { label: "hours, 95th percentile", d: 1, unit: " h" }
+  };
+  function renderBars() {
+    var m = METRICS[state.metric], data = rows();
+    var W = 560, rowH = 34, top = 6, labelW = 172, right = 70, H = top + data.length * rowH + 4;
+    var max = Math.max.apply(null, data.map(function (r) { return r[state.metric]; })) || 1;
+    var s = svg(document.getElementById("bars"), W, H, "Bar chart of " + m.label + " per scheduler");
+    var span = W - labelW - right;
+    data.forEach(function (r, i) {
+      var y = top + i * rowH, v = r[state.metric], w = Math.max(2, v / max * span);
+      var ours = r.key === "greenops_moo";
+      el("text", { x: labelW - 10, y: y + rowH / 2 + 4, "text-anchor": "end", "class": ours ? "strong" : "" }, s, r.label);
+      el("rect", { x: labelW, y: y + 7, width: w, height: rowH - 14, rx: 3, style: "fill:" + (ours ? "var(--accent)" : "var(--bar)") }, s);
+      el("text", { x: labelW + w + 6, y: y + rowH / 2 + 4, "class": "num" }, s, (m.prefix || "") + fmt(v, m.d) + m.unit);
+      var hit = el("rect", { x: 0, y: y, width: W, height: rowH, style: "fill:transparent" }, s);
+      hit.addEventListener("mousemove", function (e) {
+        showTip(e, "<b>" + r.label + "</b><br>Carbon " + fmt(r.carbon, 1) + " kg (±" + fmt(r.carbon_sd, 1) + ")<br>Cost $" +
+          fmt(r.cost, 0) + "<br>SLA violations " + fmt(r.sla, 2) + "<br>p95 latency " + fmt(r.p95, 1) + " h<br>vs Round Robin " + signed(r.vs_rr));
+      });
+      hit.addEventListener("mouseleave", hideTip);
+    });
+    document.getElementById("bars-note").textContent =
+      "Mean " + m.label + ", " + (state.season === "both" ? "both seasons" : state.season === "winter_2024" ? "January 2024" : "July 2024") +
+      ". GreenOps is highlighted; hover a row for every metric.";
+  }
+
+  // ---------------- carbon traces ----------------
+  var REGION = [["India", "var(--in)"], ["Germany", "var(--de)"], ["Norway", "var(--no)"]];
+  function renderTraces() {
+    var T = D.traces[state.trace], W = 560, H = 270, L = 42, R = 64, Tp = 10, B = 30;
+    var n = T.India.length, yMax = 850;
+    var x = function (h) { return L + h / (n - 1) * (W - L - R); };
+    var y = function (v) { return Tp + (1 - v / yMax) * (H - Tp - B); };
+    var s = svg(document.getElementById("traces"), W, H, "Hourly carbon intensity for India, Germany and Norway");
+    [0, 200, 400, 600, 800].forEach(function (v) {
+      el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), style: "stroke:var(--line);stroke-width:1" }, s);
+      el("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end" }, s, v);
+    });
+    for (var d = 0; d <= 7; d++) {
+      el("text", { x: x(Math.min(d * 24, n - 1)), y: H - 10, "text-anchor": "middle" }, s, d === 7 ? "7 d" : "Day " + d);
+    }
+    REGION.forEach(function (rg) {
+      var pts = T[rg[0]].map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
+      el("polyline", { points: pts, style: "fill:none;stroke:" + rg[1] + ";stroke-width:2;stroke-linejoin:round" }, s);
+      var last = T[rg[0]][n - 1];
+      el("text", { x: W - R + 6, y: y(last) + 4, "class": "strong" }, s, rg[0]);
+    });
+    var cursor = el("line", { x1: 0, x2: 0, y1: Tp, y2: H - B, style: "stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3", visibility: "hidden" }, s);
+    var hit = el("rect", { x: L, y: Tp, width: W - L - R, height: H - Tp - B, style: "fill:transparent" }, s);
+    hit.addEventListener("mousemove", function (e) {
+      var box = s.getBoundingClientRect();
+      var px = (e.clientX - box.left) / box.width * W;
+      var h = Math.max(0, Math.min(n - 1, Math.round((px - L) / (W - L - R) * (n - 1))));
+      cursor.setAttribute("x1", x(h)); cursor.setAttribute("x2", x(h)); cursor.setAttribute("visibility", "visible");
+      showTip(e, "<b>Day " + Math.floor(h / 24) + ", " + String(h % 24).padStart(2, "0") + ":00 UTC</b><br>" +
+        REGION.map(function (rg) { return rg[0] + ": " + T[rg[0]][h] + " g/kWh"; }).join("<br>"));
+    });
+    hit.addEventListener("mouseleave", function () { cursor.setAttribute("visibility", "hidden"); hideTip(); });
+  }
+
+  // ---------------- replay ----------------
+  var R = D.replay, CLASS = { strict: "var(--strict)", batch: "var(--batch)", flexible: "var(--flex)" };
+  var replayEls = [], cursorEl = null, xScale = null, playing = false, raf = null;
+  var timeInput = document.getElementById("time");
+  timeInput.max = R.horizon;
+
+  (function buildReplayButtons() {
+    var g = document.getElementById("replay-sched");
+    Object.keys(R.runs).forEach(function (key) {
+      var b = document.createElement("button");
+      b.type = "button"; b.id = "replay-" + key; b.dataset.v = key; b.textContent = R.runs[key].label;
+      b.setAttribute("aria-pressed", key === state.sched ? "true" : "false");
+      g.appendChild(b);
+    });
+  })();
+
+  function renderReplay() {
+    var run = R.runs[state.sched], W = 1000, L = 96, Rt = 12, Tp = 8, rowH = 8, gap = 14, axis = 26;
+    var regions = ["India", "Germany", "Norway"];
+    var heights = regions.map(function (r) { return Math.max(3, run.lanes[r].rows) * rowH + 10; });
+    var H = Tp + heights.reduce(function (a, b) { return a + b + gap; }, 0) + axis;
+    var s = svg(document.getElementById("replay"), W, H, "Timeline of jobs per region for " + run.label);
+    var hours = R.intensity.India.length;
+    xScale = function (t) { return L + t / R.horizon * (W - L - Rt); };
+    replayEls = [];
+    var y0 = Tp;
+    regions.forEach(function (region, ri) {
+      var hgt = heights[ri];
+      el("rect", { x: L, y: y0, width: W - L - Rt, height: hgt, style: "fill:var(--bg)" }, s);
+      R.intensity[region].forEach(function (ci, h) {
+        if (h >= R.horizon) return;
+        el("rect", { x: xScale(h), y: y0, width: Math.max(0.5, xScale(Math.min(h + 1, R.horizon)) - xScale(h)), height: hgt,
+          style: "fill:var(--ink);opacity:" + (ci / 850 * 0.2).toFixed(3) }, s);
+      });
+      el("text", { x: L - 10, y: y0 + hgt / 2 + 4, "text-anchor": "end", "class": "strong" }, s, region);
+      run.lanes[region].jobs.forEach(function (j) {
+        var cy = y0 + 5 + j.row * rowH + rowH / 2 - 1;
+        var wait = el("line", { x1: xScale(j.arrival), x2: xScale(j.arrival), y1: cy, y2: cy,
+          style: "stroke:var(--muted);stroke-width:1.2;stroke-dasharray:3 2" }, s);
+        var bar = el("rect", { x: xScale(j.start), y: cy - 3, width: 0, height: 6, rx: 1.5,
+          style: "fill:" + CLASS[j.cls] + (j.late ? ";stroke:var(--late);stroke-width:1.5" : "") }, s);
+        var hit = el("rect", { x: xScale(Math.min(j.arrival, j.start)), y: cy - 4, width: Math.max(4, xScale(j.finish) - xScale(Math.min(j.arrival, j.start))),
+          height: 8, style: "fill:transparent" }, s);
+        hit.addEventListener("mousemove", function (e) {
+          showTip(e, "<b>" + j.id + "</b> (" + j.cls + ", " + j.cpu + " vCPU) in " + region + "<br>Arrived " + fmt(j.arrival, 1) +
+            " h, started " + fmt(j.start, 1) + " h<br>Waited " + fmt(j.start - j.arrival, 1) + " h, finished " + fmt(j.finish, 1) +
+            " h<br>Carbon " + fmt(j.carbon, 0) + " g" + (j.late ? "<br><b>Finished after its deadline</b>" : ""));
+        });
+        hit.addEventListener("mouseleave", hideTip);
+        replayEls.push({ j: j, wait: wait, bar: bar });
+      });
+      y0 += hgt + gap;
+    });
+    for (var d = 0; d * 24 <= R.horizon; d++) {
+      el("text", { x: xScale(d * 24), y: H - 8, "text-anchor": "middle" }, s, "Day " + d);
+    }
+    cursorEl = el("line", { x1: 0, x2: 0, y1: Tp, y2: H - axis, style: "stroke:var(--accent);stroke-width:1.5" }, s);
+    drawTime();
+  }
+
+  function drawTime() {
+    var t = state.t, done = 0, carbon = 0, late = 0, total = replayEls.length;
+    replayEls.forEach(function (o) {
+      var j = o.j;
+      var waitEnd = Math.min(t, j.start);
+      o.wait.setAttribute("x2", xScale(Math.max(j.arrival, waitEnd)));
+      o.wait.setAttribute("visibility", t >= j.arrival && j.start - j.arrival > 0.05 ? "visible" : "hidden");
+      o.bar.setAttribute("width", Math.max(0, xScale(Math.min(t, j.finish)) - xScale(j.start)));
+      if (t >= j.finish) { done++; carbon += j.carbon; if (j.late) late++; }
+    });
+    cursorEl.setAttribute("x1", xScale(t)); cursorEl.setAttribute("x2", xScale(t));
+    timeInput.value = t;
+    document.getElementById("time-out").textContent = "Day " + Math.floor(t / 24) + ", " + fmt(t % 24, 0) + " h";
+    var run = R.runs[state.sched];
+    document.getElementById("stats").innerHTML =
+      "<span>Jobs finished <b>" + done + "</b> / " + total + "</span>" +
+      "<span>Carbon so far <b>" + fmt(carbon / 1000, 1) + " kg</b></span>" +
+      "<span>Late jobs <b>" + late + "</b></span>" +
+      "<span>Full run <b>" + fmt(run.carbon, 1) + " kg</b>, " + run.late + " late</span>";
+  }
+
+  function stop() { playing = false; if (raf) cancelAnimationFrame(raf); document.getElementById("play").textContent = "Play"; }
+  function play() {
+    if (reduceMotion) { state.t = R.horizon; drawTime(); return; }
+    if (state.t >= R.horizon - 0.01) state.t = 0;
+    playing = true;
+    document.getElementById("play").textContent = "Pause";
+    var last = null, speed = R.horizon / 14000;
+    function frame(ts) {
+      if (!playing) return;
+      if (last !== null) state.t = Math.min(R.horizon, state.t + (ts - last) * speed);
+      last = ts;
+      drawTime();
+      if (state.t >= R.horizon) { stop(); return; }
+      raf = requestAnimationFrame(frame);
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  document.getElementById("play").addEventListener("click", function () { playing ? stop() : play(); });
+  timeInput.addEventListener("input", function () { stop(); state.t = parseFloat(timeInput.value); drawTime(); });
+
+  // ---------------- small line charts ----------------
+  function lineChart(id, series, xLabel, xMax, xTicks, yTitle, label) {
+    var W = 520, H = 250, L = 46, Rr = 110, Tp = 12, B = 40;
+    var all = [];
+    series.forEach(function (sr) { sr.points.forEach(function (p) { all.push(p[1]); }); });
+    var lo = Math.floor(Math.min.apply(null, all) - 1), hi = Math.ceil(Math.max.apply(null, all) + 1);
+    var x = function (v) { return L + v / xMax * (W - L - Rr); };
+    var y = function (v) { return Tp + (1 - (v - lo) / (hi - lo)) * (H - Tp - B); };
+    var s = svg(document.getElementById(id), W, H, label);
+    var step = (hi - lo) > 12 ? 4 : 2;
+    for (var v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      el("line", { x1: L, x2: W - Rr, y1: y(v), y2: y(v), style: "stroke:var(--line);stroke-width:1" }, s);
+      el("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end" }, s, v);
+    }
+    xTicks.forEach(function (t) { el("text", { x: x(t), y: H - 22, "text-anchor": "middle" }, s, t); });
+    el("text", { x: L + (W - L - Rr) / 2, y: H - 4, "text-anchor": "middle" }, s, xLabel);
+    el("text", { x: 12, y: Tp + (H - Tp - B) / 2, "text-anchor": "middle", transform: "rotate(-90 12 " + (Tp + (H - Tp - B) / 2) + ")" }, s, yTitle);
+    var labels = [];
+    series.forEach(function (sr) {
+      var pts = sr.points.map(function (p) { return x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1); }).join(" ");
+      el("polyline", { points: pts, style: "fill:none;stroke:" + sr.color + ";stroke-width:2" + (sr.dash ? ";stroke-dasharray:5 4" : "") }, s);
+      sr.points.forEach(function (p) {
+        var c = el("circle", { cx: x(p[0]), cy: y(p[1]), r: 4, style: "fill:" + sr.color + ";stroke:var(--surface);stroke-width:1.5" }, s);
+        c.addEventListener("mousemove", function (e) { showTip(e, "<b>" + sr.name + "</b><br>" + xLabel + ": " + p[0] + "<br>" + fmt(p[1], 1) + " kg per run"); });
+        c.addEventListener("mouseleave", hideTip);
+      });
+      var lastP = sr.points[sr.points.length - 1];
+      labels.push({ y: y(lastP[1]), name: sr.name, color: sr.color });
+    });
+    labels.sort(function (a, b) { return a.y - b.y; });
+    for (var i = 1; i < labels.length; i++) { if (labels[i].y - labels[i - 1].y < 14) labels[i].y = labels[i - 1].y + 14; }
+    labels.forEach(function (lb) { el("text", { x: W - Rr + 8, y: lb.y + 4, "class": "strong" }, s, lb.name); });
+  }
+
+  function renderSensitivity() {
+    var F = D.sensitivity.forecast;
+    lineChart("forecast", [
+      { name: "Temporal Green", points: F["Temporal Green"], color: "var(--tg)" },
+      { name: "GreenOps", points: F["GreenOps"], color: "var(--accent)" },
+      { name: "Greenest Region", points: [[0, F["Greenest Region"][0][1]], [50, F["Greenest Region"][0][1]]], color: "var(--muted)", dash: true }
+    ], "forecast error (%)", 50, [0, 10, 20, 30, 40, 50], "kg CO₂eq per run", "Carbon versus forecast error");
+    var M = D.sensitivity.maxwait;
+    lineChart("maxwait", [
+      { name: "Temporal Green", points: M["Temporal Green"].carbon, color: "var(--tg)" },
+      { name: "GreenOps", points: M["GreenOps"].carbon, color: "var(--accent)" }
+    ], "maximum delay (h)", 24, [0, 4, 8, 12, 18, 24], "kg CO₂eq per run", "Carbon versus maximum allowed delay");
+  }
+
+  // ---------------- wiring ----------------
+  segment("season", "season", function () {
+    if (state.season !== "both") { state.trace = state.season; setPressed("trace-season", state.trace); renderTraces(); }
+    renderKpis(); renderBars();
+  });
+  segment("metric", "metric", renderBars);
+  segment("trace-season", "trace", renderTraces);
+  segment("replay-sched", "sched", function () { stop(); renderReplay(); });
+
+  state.t = R.horizon;
+  renderKpis();
+  renderBars();
+  renderTraces();
+  renderReplay();
+  renderSensitivity();
+})();
+</script>
