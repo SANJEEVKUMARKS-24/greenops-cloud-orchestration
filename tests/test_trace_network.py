@@ -78,7 +78,25 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(res["region"], "Away")
         self.assertTrue(res["moved"])
         self.assertAlmostEqual(res["transfer_carbon"], 125)
+        self.assertAlmostEqual(res["start_time"], 0.5)
         self.assertAlmostEqual(res["finish_time"], 2.5)
+
+    def test_transfer_does_not_hold_cpus(self):
+        from schedulers.round_robin import RoundRobinScheduler
+        net = NetworkModel(bandwidth_gb_per_hour=10)
+        away = region("Away", flat(100), cpu=16)
+        home = region("Home", flat(100), cpu=16)
+        # Mover stages 50 GB (5 h) into Away; a local job in Away
+        # must be able to use the full region meanwhile.
+        mover = job("M", cpu=16, runtime=1, deadline=50, flexibility="strict",
+                    home="Home", data_gb=50, allowed=["Away"])
+        local = job("L", arrival=1, cpu=16, runtime=2, deadline=10,
+                    flexibility="strict", home="Away", allowed=["Away"])
+        m = simulate_with_network(RoundRobinScheduler(), [away, home],
+                                  [mover, local], net)
+        res = {r["job_id"]: r for r in m.get_results()}
+        self.assertAlmostEqual(res["L"]["start_time"], 1.0)
+        self.assertAlmostEqual(res["M"]["start_time"], 5.0)
 
 
 def simulate_with_network(scheduler, regions, jobs, network):

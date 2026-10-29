@@ -281,6 +281,37 @@ class CloudSimulator:
                 yield self._wait_for_resources()
 
         # ==============================================
+        # DATA TRANSFER (only outside the home region)
+        #
+        # The input is staged BEFORE compute starts and
+        # does not hold any CPUs: copying data uses the
+        # network, not the region's servers. Once it has
+        # arrived the job waits for free capacity in the
+        # region its data now lives in.
+        # ==============================================
+
+        if self.network is not None:
+
+            job.transfer_hours = self.network.transfer_hours(job, region)
+            job.transfer_energy = self.network.transfer_energy(job, region)
+            job.transfer_carbon = self.network.transfer_carbon(
+                job, region, self.env.now
+            )
+            job.transfer_cost = self.network.transfer_cost(job, region)
+
+        if job.transfer_hours > 0:
+
+            self.log(
+                f"Job {job.job_id} staging {job.data_gb:.0f} GB to "
+                f"{region.name} ({job.transfer_hours:.2f} h)"
+            )
+
+            yield self.env.timeout(job.transfer_hours)
+
+            while not region.can_run(job):
+                yield self._wait_for_resources()
+
+        # ==============================================
         # ALLOCATE RESOURCES
         # ==============================================
 
@@ -298,29 +329,13 @@ class CloudSimulator:
         # the scheduler used to make its decision.
         # ==============================================
 
-        # ----------------------------------------------
-        # Data transfer (only outside the home region).
-        # Resources are held while the input is staged.
-        # ----------------------------------------------
-
-        if self.network is not None:
-
-            job.transfer_hours = self.network.transfer_hours(job, region)
-            job.transfer_energy = self.network.transfer_energy(job, region)
-            job.transfer_carbon = self.network.transfer_carbon(
-                job, region, job.start_time
-            )
-            job.transfer_cost = self.network.transfer_cost(job, region)
-
-        compute_start = job.start_time + job.transfer_hours
-
         job.energy_consumed = region.calculate_energy(
             job.runtime,
             job.cpu_required
         )
 
         job.carbon_intensity = region.average_carbon_intensity(
-            compute_start,
+            job.start_time,
             job.runtime
         )
 
@@ -345,7 +360,7 @@ class CloudSimulator:
         # ==============================================
 
         yield self.env.timeout(
-            job.transfer_hours + job.runtime
+            job.runtime
         )
 
         # ==============================================

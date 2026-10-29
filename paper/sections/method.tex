@@ -16,7 +16,10 @@ region $h_j$. Jobs belong to one of three SLA classes: \emph{strict}
 Running $j$ in $r\neq h_j$ first transfers $g_j$\,GB, taking
 $\tau_{j,r}=g_j/\beta$ hours, $e_{\text{net}}\,g_j$\,kWh, and
 $\pi_{\text{egress}}\,g_j$ dollars. Transfer emissions are charged at the
-mean intensity of the two endpoints.
+mean intensity of the two endpoints. Data is staged before compute
+starts and occupies the network, not the target region's CPUs. Budgets
+cover compute \emph{and} egress, so large inputs can make remote regions
+unaffordable.
 
 \paragraph{Candidates and hard constraints.}
 At decision time $t$, GreenOps enumerates candidates $x=(r,s)$ with
@@ -72,6 +75,15 @@ factors~\cite{ipcc2014annex}. India has no free hourly data source, so
 its trace is \emph{modelled}, calibrated to the CEA baseline
 database~\cite{cea2023baseline}. We use two four-week periods, January
 and July 2024 (\autoref{fig:setting}).
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig_setting}
+  \caption{Left: hourly carbon intensity of the three regions in the first
+    week of July 2024 (India modelled). Right: CPU demand submitted per hour
+    in the 10\,\% Alibaba sample, showing the trace's real bursts.}
+  \label{fig:setting}
+\end{figure*}
 
 \paragraph{Forecasts.}
 Schedulers see forecasts with error
