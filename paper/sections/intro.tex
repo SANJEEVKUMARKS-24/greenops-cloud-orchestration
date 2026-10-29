@@ -1,0 +1,59 @@
+\section{Introduction}
+\label{sec:intro}
+
+The carbon intensity of electricity differs widely between grids and
+over the day. In January 2024 the Norwegian grid averaged about
+28\,gCO$_2$eq/kWh while Poland's averaged 586, and Germany's ranged from
+130 to 650 within days as wind and solar output changed
+(\S\ref{sec:method}). A cloud job emits very different amounts of
+carbon depending on \emph{where} and \emph{when} it runs. Carbon-aware
+schedulers exploit this through \emph{spatial shifting} (moving work to
+cleaner regions)~\cite{zhou2013carbon,gsteiger2024caribou} and
+\emph{temporal shifting} (delaying work to cleaner
+hours)~\cite{wiesner2021wait,radovanovic2023carbon}.
+
+Acun et al.~\cite{acun2024limitations} showed that the realistic gains
+of both forms of shifting are smaller than idealised analyses suggest.
+Much of the benefit is captured by simple policies, and capacity,
+latency and data movement limit the rest. Three practical questions
+follow:
+\begin{itemize}
+\item What does shifting cost in \emph{service quality}, that is, how
+  many deadlines does it break on a real, bursty workload?
+\item How much does the cost of moving data shrink spatial shifting?
+\item How robust are forecast-driven policies when forecasts are wrong?
+\end{itemize}
+Published policies are rarely compared on these questions under the
+same constraints.
+
+This paper studies these questions with \emph{GreenOps}, a
+multi-objective scheduler that decides, for every job, a region and a
+start time. It weighs forecast carbon (including data-transfer
+emissions), cost and a convex measure of deadline risk. Deadlines,
+budgets and data residency are hard constraints. We evaluate GreenOps
+against six baselines in a discrete-event simulator. The baselines
+include the temporal-shifting strategy of Wiesner et
+al.~\cite{wiesner2021wait} and a forecast-free threshold rule underlying
+the competitive algorithms of Lechowicz et al.~\cite{lechowicz2024soad}.
+The simulator is driven by real 2024 grid data and $\approx$45\,k jobs
+per run from the Alibaba 2018 cluster trace~\cite{guo2019alibaba}.
+
+Our findings are:
+\begin{itemize}
+\item \textbf{Deferral protects deadlines.} On the real trace, policies
+  that never delay work miss the deadlines of about 5\,\% of urgent jobs
+  at demand peaks. Delaying flexible work frees capacity, and GreenOps
+  has the fewest violations of all policies.
+\item \textbf{There is no free lunch.} A forecast-free threshold policy
+  reaches the lowest carbon, but at several times GreenOps' violation
+  rate. No GreenOps weighting matches its carbon. The policies trace a
+  genuine carbon--SLA frontier rather than a single winner.
+\item \textbf{Data gravity acts mainly through cost.} At realistic data
+  volumes, network energy is a small share of emissions. Egress fees
+  and transfer time, not transfer carbon, are what pull jobs back to
+  their home region.
+\item \textbf{Re-planning beats trusting the forecast.} Policies that
+  commit to a forecast once degrade fastest as forecast error grows.
+\end{itemize}
+The simulator, traces and experiment scripts are open
+source.\footnote{\url{https://github.com/sanjeevkumarks/greenops-cloud-orchestration}}
