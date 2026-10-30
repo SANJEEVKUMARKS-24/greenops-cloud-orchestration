@@ -2,7 +2,7 @@
 
 **Spatial and Temporal Demand Shifting for Carbon-Aware Workload Scheduling**
 
-Mohammed Faheem K (24MID0158) · Nithish Kumar (24MIC0032) · Sanjeev Kumar (24MID0172) — VIT Vellore
+SANJEEVKUMAR K S (24MID0172) · NITHISH KUMAR (24MIC0032) · MUHAMMED FAHEEM K (24MID0158) — VIT Vellore
 
 A multi-objective, carbon-aware scheduler for geo-distributed clouds, evaluated in a
 SimPy discrete-event simulator driven by **real historical grid carbon-intensity data**.

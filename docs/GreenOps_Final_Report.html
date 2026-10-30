@@ -2,52 +2,361 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>GreenOps Final Report</title>
+<title>GreenOps: Carbon-Aware Cloud Workload Scheduling Report</title>
 <style>
-  @page { size: A4; margin: 20mm 18mm 20mm 18mm; }
-  :root { --ink:#111; --ink2:#444; --rule:#cfcfcf; --accent:#1c5cab; --tint:#f3f6fa; }
-  html { background:#fff; }
-  body { font-family: Georgia, "Times New Roman", serif; color:var(--ink); font-size:10.6pt; line-height:1.48; margin:0; background:#fff; }
-  h1,h2,h3,h4 { font-family: "Segoe UI", Arial, sans-serif; color:var(--ink); line-height:1.25; }
-  h2 { font-size:15pt; margin:26px 0 8px; border-bottom:1.5px solid var(--ink); padding-bottom:4px; page-break-after:avoid; }
-  h3 { font-size:11.8pt; margin:18px 0 6px; page-break-after:avoid; }
-  h4 { font-size:10.6pt; margin:12px 0 4px; page-break-after:avoid; }
-  p { margin:6px 0 8px; text-align:justify; }
-  .title { text-align:center; padding:40px 0 18px; }
-  .title .kicker { font-family:"Segoe UI",Arial,sans-serif; letter-spacing:.25em; font-size:9.5pt; color:var(--ink2); }
-  .title h1 { font-size:26pt; margin:14px 0 6px; }
-  .title .sub { font-size:13pt; font-style:italic; margin-bottom:18px; }
-  .title .authors { font-family:"Segoe UI",Arial,sans-serif; font-size:10.5pt; }
-  .title .inst { font-size:10pt; color:var(--ink2); }
-  table { border-collapse:collapse; width:100%; margin:8px 0 4px; font-family:"Segoe UI",Arial,sans-serif; font-size:8.8pt; page-break-inside:avoid; }
-  th, td { border-bottom:1px solid var(--rule); padding:4px 6px; text-align:left; vertical-align:top; }
-  th { border-bottom:1.5px solid var(--ink); font-weight:600; }
-  td.n, th.n { text-align:right; font-variant-numeric: tabular-nums; }
-  tr.hl td { background:var(--tint); font-weight:600; }
-  .cap { font-family:"Segoe UI",Arial,sans-serif; font-size:8.6pt; color:var(--ink2); text-align:center; margin:2px 0 14px; }
-  figure { margin:10px 0 6px; page-break-inside:avoid; text-align:center; }
-  figure img { max-width:100%; }
-  pre, code { font-family: Consolas, "Courier New", monospace; font-size:8.6pt; }
-  pre { background:#f6f6f4; border-left:3px solid var(--accent); padding:8px 10px; white-space:pre-wrap; page-break-inside:avoid; line-height:1.35; }
-  .eq { text-align:center; font-style:italic; margin:8px 0; font-size:10.8pt; }
-  .box { border:1px solid var(--rule); background:#fafafa; padding:8px 12px; margin:10px 0; page-break-inside:avoid; }
-  .box b.h { font-family:"Segoe UI",Arial,sans-serif; display:block; margin-bottom:3px; }
-  ul, ol { margin:4px 0 8px 0; padding-left:22px; }
-  li { margin:2px 0; }
-  .refs li { font-size:9pt; margin:3px 0; }
-  .pb { page-break-before:always; }
-  .small { font-size:9pt; color:var(--ink2); }
-  svg text { font-family:"Segoe UI",Arial,sans-serif; }
+  @page {
+    size: A4;
+    margin: 20mm 18mm 20mm 18mm;
+  }
+  :root {
+    --ink: #0f172a;
+    --ink2: #334155;
+    --rule: #cbd5e1;
+    --table-border: #94a3b8;
+    --table-header: #f1f5f9;
+    --table-alt: #f8fafc;
+    --table-hl: #e2e8f0;
+  }
+  html {
+    background: #ffffff;
+  }
+  body {
+    font-family: "Times New Roman", Times, Georgia, serif;
+    color: var(--ink);
+    font-size: 10.5pt;
+    line-height: 1.5;
+    margin: 0;
+    background: #ffffff;
+  }
+  h1, h2, h3, h4 {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    color: var(--ink);
+    line-height: 1.25;
+  }
+  h2 {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 26px 0 8px;
+    padding-bottom: 0;
+    border: none;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 11.5pt;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 18px 0 6px;
+    page-break-after: avoid;
+  }
+  h4 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #334155;
+    margin: 12px 0 4px;
+    page-break-after: avoid;
+  }
+  p {
+    margin: 6px 0 10px;
+    text-align: justify;
+    text-justify: inter-word;
+  }
+
+  /* Cover Page Styling */
+  .cover-page {
+    min-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: center;
+    padding: 30px 10px 10px 10px;
+    page-break-after: always;
+  }
+  .inst-block {
+    margin-bottom: 40px;
+  }
+  .inst-name {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 15pt;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #0f172a;
+    margin-bottom: 4px;
+  }
+  .inst-dept {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 11.5pt;
+    font-weight: 600;
+    color: #334155;
+  }
+  .inst-loc {
+    font-family: Georgia, serif;
+    font-size: 10pt;
+    color: #64748b;
+    margin-top: 2px;
+  }
+  .cover-center {
+    margin: 36px 0;
+  }
+  .report-type {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 11pt;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 12px;
+  }
+  .project-title {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 24pt;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.25;
+    margin: 0 0 12px 0;
+  }
+  .project-sub {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 12.5pt;
+    font-style: italic;
+    color: #334155;
+    line-height: 1.4;
+    max-width: 85%;
+    margin: 0 auto;
+  }
+  .submission-block {
+    margin: 36px auto;
+    width: 100%;
+    max-width: 620px;
+  }
+  .sub-label {
+    font-family: Georgia, serif;
+    font-size: 10.5pt;
+    font-style: italic;
+    color: #475569;
+    margin-bottom: 14px;
+  }
+  .cover-author-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1.5px solid #334155;
+    margin: 0 auto;
+    background: #ffffff;
+  }
+  .cover-author-table th, .cover-author-table td {
+    border: 1px solid #94a3b8;
+    padding: 8px 12px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 9.2pt;
+    text-align: left;
+  }
+  .cover-author-table th {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-weight: 700;
+    text-align: center;
+    border-bottom: 2px solid #334155;
+  }
+  .cover-author-table td strong {
+    color: #0f172a;
+  }
+  .cover-footer {
+    margin-top: 36px;
+    padding-top: 15px;
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+  .dept-title {
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #1e293b;
+  }
+  .inst-title {
+    font-size: 10pt;
+    color: #475569;
+  }
+  .academic-year {
+    font-size: 9.5pt;
+    color: #64748b;
+    margin-top: 4px;
+  }
+
+  /* Complete Table Styling */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0 12px 0;
+    border: 1.5px solid #334155;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8.8pt;
+    page-break-inside: avoid;
+    background: #ffffff;
+  }
+  th, td {
+    border: 1px solid #94a3b8;
+    padding: 7px 10px;
+    text-align: left;
+    vertical-align: middle;
+  }
+  th {
+    border: 1px solid #64748b;
+    border-bottom: 2px solid #1e293b;
+    font-weight: 700;
+    background-color: #f1f5f9;
+    color: #0f172a;
+  }
+  td.n, th.n {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  tr:nth-child(even) td {
+    background-color: #f8fafc;
+  }
+  tr.hl td {
+    background-color: #e2e8f0;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .cap {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 8.8pt;
+    color: #475569;
+    text-align: center;
+    margin: 4px 0 16px;
+    font-style: italic;
+  }
+
+  /* Figures & SVG */
+  figure {
+    margin: 16px 0 8px;
+    page-break-inside: avoid;
+    text-align: center;
+  }
+  figure img {
+    max-width: 92%;
+    height: auto;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 4px;
+    background: #ffffff;
+  }
+  svg text {
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+
+  /* Code & Callout Boxes */
+  pre, code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 8.6pt;
+  }
+  pre {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 10px 12px;
+    white-space: pre-wrap;
+    page-break-inside: avoid;
+    line-height: 1.35;
+    color: #1e293b;
+  }
+  .eq {
+    text-align: center;
+    font-style: italic;
+    margin: 10px 0;
+    font-size: 10pt;
+    color: #0f172a;
+    padding: 6px 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+  }
+  .box {
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #f8fafc;
+    padding: 10px 14px;
+    margin: 12px 0;
+    page-break-inside: avoid;
+  }
+  .box b.h {
+    font-family: "Segoe UI", Arial, sans-serif;
+    display: block;
+    margin-bottom: 4px;
+    color: #0f172a;
+    font-size: 9.8pt;
+  }
+
+  /* Lists and References */
+  ul, ol {
+    margin: 6px 0 10px 0;
+    padding-left: 22px;
+  }
+  li {
+    margin: 3px 0;
+  }
+  .refs li {
+    font-size: 9pt;
+    margin: 4px 0;
+    line-height: 1.4;
+  }
+  .pb {
+    page-break-before: always;
+  }
+  .small {
+    font-size: 8.8pt;
+    color: #475569;
+  }
 </style>
 </head>
 <body>
 
-<div class="title">
-  <div class="kicker">FINAL PROJECT REPORT</div>
-  <h1>GreenOps Cloud Orchestration</h1>
-  <div class="sub">Spatial and Temporal Demand Shifting for Carbon-Aware Cloud Workload Scheduling</div>
-  <div class="authors">Mohammed Faheem K (24MID0158) &middot; Nithish Kumar (24MIC0032) &middot; Sanjeev Kumar (24MID0172)</div>
-  <div class="inst">Vellore Institute of Technology, Vellore</div>
+<div class="cover-page">
+  <div class="inst-block">
+    <div class="inst-name">VELLORE INSTITUTE OF TECHNOLOGY</div>
+    <div class="inst-dept">School of Computer Science and Engineering</div>
+    <div class="inst-loc">Vellore – 632014, Tamil Nadu, India</div>
+  </div>
+
+  <div class="cover-center">
+    <div class="report-type">Project Report</div>
+    <h1 class="project-title">GreenOps Cloud Orchestration</h1>
+    <div class="project-sub">Spatial and Temporal Demand Shifting for Carbon-Aware Cloud Workload Scheduling</div>
+  </div>
+
+  <div class="submission-block">
+    <div class="sub-label">A Project Report Submitted by</div>
+    <table class="cover-author-table">
+      <thead>
+        <tr>
+          <th>Student Name</th>
+          <th>Register Number</th>
+          <th>Degree &amp; Programme</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>SANJEEVKUMAR K S</strong></td>
+          <td>24MID0172</td>
+          <td>Integrated M.Tech (CSE)</td>
+        </tr>
+        <tr>
+          <td><strong>NITHISH KUMAR</strong></td>
+          <td>24MIC0032</td>
+          <td>Integrated M.Tech (CSE)</td>
+        </tr>
+        <tr>
+          <td><strong>MUHAMMED FAHEEM K</strong></td>
+          <td>24MID0158</td>
+          <td>Integrated M.Tech (CSE)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="cover-footer">
+    <div class="dept-title">Department of Computer Science and Engineering</div>
+    <div class="inst-title">Vellore Institute of Technology, Vellore</div>
+    <div class="academic-year">Academic Session 2024–2025</div>
+  </div>
 </div>
 
 <h2>Abstract</h2>
@@ -259,7 +568,8 @@ RUN: allocate &rarr; energy = E_r(j) &rarr; carbon = energy &times; ACTUAL mean 
 <tr><td>Large-scale, multi-seed validation</td><td>Pending</td><td>Complete: 20 seeds &times; 2 seasons &times; 300 jobs; up to 5,000 jobs (E1, E7)</td></tr>
 <tr><td>Pareto frontier / sensitivity analysis</td><td>Pending</td><td>Complete: 66-point simplex sweep, hypervolume, deferral and load sweeps (E2, E4, E5)</td></tr>
 <tr><td>Trace-driven validation and published baselines</td><td>&ndash;</td><td>Complete: Alibaba 2018 trace (~45,000 jobs per run), data-transfer model, Wait Awhile [17] and Online Threshold [12] (&sect;5.9)</td></tr>
-<tr><td>Automated tests</td><td>&ndash;</td><td>50 unit and integration tests, all passing</td></tr>
+<tr><td>Interactive cloud dashboard</td><td>&ndash;</td><td>Complete: real-time job assignment, live 24h carbon sparklines, multi-scheduler benchmarking, Gantt timeline (<code>interactive_dashboard/</code>)</td></tr>
+<tr><td>Automated tests</td><td>&ndash;</td><td>51 unit and integration tests, all passing</td></tr>
 </table>
 <div class="cap">Table 4.1: Implementation status</div>
 <p>The implementation is written in Python 3.14 with SimPy 4.1, pandas and matplotlib. It is organised into <code>sim</code> (Job, Region, CarbonForecaster, CloudSimulator), <code>schedulers</code> (four baselines and GreenOps), <code>metrics</code>, <code>experiments</code> (scenario builder, single-run CLI, preliminary comparison, evaluation suite and plots), <code>data</code> (trace pipeline and workload generator) and <code>tests</code>. The full evaluation, about 5,800 simulations, runs in roughly one minute on a 16-core laptop.</p>
@@ -289,7 +599,7 @@ RUN: allocate &rarr; energy = E_r(j) &rarr; carbon = energy &times; ACTUAL mean 
 <div class="cap">Table 4.2: Preliminary five-job experiment re-run on the corrected simulator (controlled 24-hour traces)</div>
 
 <h3>4.4 Testing</h3>
-<p>The test suite (<code>tests/test_greenops.py</code>, 34 tests) checks the guarantees the design relies on:</p>
+<p>The test suite (<code>tests/test_greenops.py</code> and <code>tests/test_trace_network.py</code>, 51 tests) checks the guarantees the design relies on:</p>
 <ul>
 <li>A job with zero slack is never deferred, and strict jobs always start immediately.</li>
 <li>A job with a large slack waits for a clearly cleaner window, and no deferral ever breaks a deadline, including under noisy forecasts with re-planning.</li>
@@ -403,7 +713,7 @@ RUN: allocate &rarr; energy = E_r(j) &rarr; carbon = energy &times; ACTUAL mean 
 <li><b>Simulation, not deployment.</b> Region capacities are small (16 vCPU) to create contention, and the absolute numbers are illustrative. The relative comparisons are the result.</li>
 <li><b>India's trace is modelled</b>, not measured, and intensities are production-based averages that ignore imports. Marginal emission signals (WattTime) could give different shifting gains.</li>
 <li><b>Partly synthetic workloads.</b> Section 5.9 replays real Alibaba arrivals, runtimes and CPU demand, but deadlines, budgets, home regions and data sizes are still assigned synthetically.</li>
-<li><b>No data-transfer model.</b> Moving input data between regions costs time and energy, which would reduce the benefit of spatial shifting for data-heavy jobs.</li>
+<li><b>Synthetic study data-transfer model.</b> In the synthetic experiments E1&ndash;E7, data movement overhead is omitted; however, Section&nbsp;5.9 and Phase&nbsp;P1&ndash;P5 explicitly incorporate WAN data transfer (0.005&nbsp;kWh/GB, $0.02/GB, and 1&nbsp;Gbit/s) with decoupled compute allocation.</li>
 <li><b>Capacity is not reserved for deferred jobs</b>. They re-check capacity when they wake and re-plan if it has been taken. Reservations could reduce the rare saturation-driven violations.</li>
 <li><b>Weights were tuned once</b> on separate seeds for the 3-region scenario and reused in all other scenarios. Scenario-specific tuning could improve them further.</li>
 </ul>
@@ -447,7 +757,9 @@ RUN: allocate &rarr; energy = E_r(j) &rarr; carbon = energy &times; ACTUAL mean 
 
 <h2>Appendix A: Reproducing the Results</h2>
 <pre>.\greenops_env\Scripts\Activate.ps1
-python -m unittest discover -s tests -v          # 34 tests
+python -m unittest discover -s tests -v          # 51 unit & integration tests
+python demo.py                                  # live viva demo (5 interactive steps)
+python interactive_dashboard\server.py          # launch interactive web dashboard
 python data/fetch_carbon_traces.py                # optional: rebuild traces
 python -m experiments.comparison.run_all         # Table 4.2
 python -m experiments.evaluation                  # E1-E7  -> results/evaluation/*.csv
